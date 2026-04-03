@@ -1,0 +1,247 @@
+name: postman-api-catalog
+
+on:
+  pull_request:
+    paths:
+      - "openapi/**"
+      - "specs/**"
+      - "postman-services.json"
+      - ".github/workflows/postman-api-catalog.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "openapi/**"
+      - "specs/**"
+      - "postman-services.json"
+      - ".github/workflows/postman-api-catalog.yml"
+  workflow_dispatch:
+    inputs:
+      target_service:
+        description: "Optional service_key to process"
+        required: false
+        type: string
+
+concurrency:
+  group: postman-api-catalog-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: write
+  checks: write
+  pull-requests: write
+
+env:
+  MANIFEST_PATH: postman-services.json
+  REPORTS_DIR: reports
+  POSTMAN_INTEGRATION_BACKEND: bifrost
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      has_changes: ${{ steps.select.outputs.has_changes }}
+      matrix: ${{ steps.select.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: select
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test -f "${MANIFEST_PATH}"
+
+          target_service="${{ github.event_name == 'workflow_dispatch' && inputs.target_service || '' }}"
+          event_name="${{ github.event_name }}"
+          before_sha="${{ github.event.before }}"
+          head_sha="${{ github.sha }}"
+          pr_base_sha="${{ github.event.pull_request.base.sha || '' }}"
+          pr_head_sha="${{ github.event.pull_request.head.sha || '' }}"
+
+          all_services="$(jq -c '.services' "${MANIFEST_PATH}")"
+
+          if [[ -n "${target_service}" ]]; then
+            filtered="$(jq -c --arg key "${target_service}" '
+              map(select(.service_key == $key))
+            ' <<<"${all_services}")"
+          else
+            changed_files=""
+            if [[ "${event_name}" == "pull_request" && -n "${pr_base_sha}" && -n "${pr_head_sha}" ]]; then
+              changed_files="$(git diff --name-only "${pr_base_sha}" "${pr_head_sha}" || true)"
+            elif [[ "${event_name}" == "push" && -n "${before_sha}" && "${before_sha}" != "0000000000000000000000000000000000000000" ]]; then
+              changed_files="$(git diff --name-only "${before_sha}" "${head_sha}" || true)"
+            fi
+
+            if [[ -z "${changed_files}" ]]; then
+              filtered="${all_services}"
+            else
+              changed_json="$(printf '%s\n' "${changed_files}" | jq -R -s 'split("\n") | map(select(length > 0))')"
+              filtered="$(jq -c --argjson changed "${changed_json}" '
+                map(
+                  . as $service
+                  | select($changed | any(. == $service.spec_path))
+                )
+              ' <<<"${all_services}")"
+            fi
+          fi
+
+          count="$(jq 'length' <<<"${filtered}")"
+          if [[ "${count}" -eq 0 ]]; then
+            echo "has_changes=false" >> "${GITHUB_OUTPUT}"
+            echo 'matrix={"include":[]}' >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+
+          echo "has_changes=true" >> "${GITHUB_OUTPUT}"
+          echo "matrix=$(jq -c '{include: .}' <<<"${filtered}")" >> "${GITHUB_OUTPUT}"
+
+  spechub_pipeline:
+    needs: plan
+    if: needs.plan.outputs.has_changes == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Postman CLI
+        run: npm install -g postman-cli
+
+      - name: Authenticate Postman CLI
+        env:
+          POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
+        run: postman login --with-api-key "${POSTMAN_API_KEY}"
+
+      - name: Prepare reports directory
+        run: mkdir -p "${REPORTS_DIR}"
+
+      - name: Bootstrap workspace, spec, and collections
+        id: bootstrap
+        uses: postman-cs/postman-bootstrap-action@v0
+        with:
+          project-name: ${{ matrix.service_key }}
+          domain: ${{ matrix.domain }}
+          domain-code: ${{ matrix.domain_code }}
+          requester-email: ${{ matrix.requester_email }}
+          workspace-admin-user-ids: ${{ vars.POSTMAN_WORKSPACE_ADMIN_USER_IDS }}
+          spec-url: ${{ matrix.spec_url }}
+          workspace-id: ${{ matrix.workspace_id }}
+          spec-id: ${{ matrix.spec_id }}
+          baseline-collection-id: ${{ matrix.baseline_collection_id }}
+          smoke-collection-id: ${{ matrix.smoke_collection_id }}
+          contract-collection-id: ${{ matrix.contract_collection_id }}
+          collection-sync-mode: reuse
+          integration-backend: ${{ env.POSTMAN_INTEGRATION_BACKEND }}
+          postman-api-key: ${{ secrets.POSTMAN_API_KEY }}
+
+      - name: Lint OpenAPI spec
+        shell: bash
+        run: |
+          set -o pipefail
+          postman spec lint "${{ matrix.spec_path }}" \
+            --fail-severity ERROR \
+            --output JSON \
+            2>&1 | tee "${REPORTS_DIR}/${{ matrix.service_key }}-lint.txt"
+
+      - name: Run smoke tests
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          collection_id="${{ matrix.smoke_collection_id }}"
+          if [[ -z "${collection_id}" ]]; then
+            collection_id="${{ steps.bootstrap.outputs.smoke-collection-id }}"
+          fi
+          postman collection run "${collection_id}" \
+            --env-var "baseUrl=${{ matrix.smoke_base_url }}" \
+            --env-var "apiVersion=${{ matrix.version }}" \
+            --bail failure \
+            --reporters cli,junit,json \
+            --reporter-junit-export "${REPORTS_DIR}/${{ matrix.service_key }}-smoke.junit.xml" \
+            --reporter-json-export "${REPORTS_DIR}/${{ matrix.service_key }}-smoke.json" \
+            2>&1 | tee "${REPORTS_DIR}/${{ matrix.service_key }}-smoke.txt"
+
+      - name: Run contract tests
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -o pipefail
+          collection_id="${{ matrix.contract_collection_id }}"
+          if [[ -z "${collection_id}" ]]; then
+            collection_id="${{ steps.bootstrap.outputs.contract-collection-id }}"
+          fi
+          postman collection run "${collection_id}" \
+            --env-var "baseUrl=${{ matrix.smoke_base_url }}" \
+            --env-var "apiVersion=${{ matrix.version }}" \
+            --bail failure \
+            --reporters cli,junit,json \
+            --reporter-junit-export "${REPORTS_DIR}/${{ matrix.service_key }}-contract.junit.xml" \
+            --reporter-json-export "${REPORTS_DIR}/${{ matrix.service_key }}-contract.json" \
+            2>&1 | tee "${REPORTS_DIR}/${{ matrix.service_key }}-contract.txt"
+
+      - name: Repo sync and publish Spec Hub-backed assets to API catalog
+        id: repo_sync
+        uses: postman-cs/postman-repo-sync-action@v0
+        with:
+          project-name: ${{ matrix.service_key }}
+          workspace-id: ${{ steps.bootstrap.outputs.workspace-id }}
+          spec-id: ${{ steps.bootstrap.outputs.spec-id }}
+          baseline-collection-id: ${{ steps.bootstrap.outputs.baseline-collection-id }}
+          smoke-collection-id: ${{ steps.bootstrap.outputs.smoke-collection-id }}
+          contract-collection-id: ${{ steps.bootstrap.outputs.contract-collection-id }}
+          spec-path: ${{ matrix.spec_path }}
+          environments-json: ${{ toJSON(matrix.environments) }}
+          env-runtime-urls-json: ${{ toJSON(matrix.runtime_urls) }}
+          generate-ci-workflow: false
+          integration-backend: ${{ env.POSTMAN_INTEGRATION_BACKEND }}
+          postman-api-key: ${{ secrets.POSTMAN_API_KEY }}
+          postman-access-token: ${{ secrets.POSTMAN_ACCESS_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          gh-fallback-token: ${{ secrets.GH_FALLBACK_TOKEN }}
+
+      - name: Optional Insights onboarding
+        id: insights
+        if: ${{ matrix.enable_insights }}
+        uses: postman-cs/postman-insights-onboarding-action@v0
+        with:
+          project-name: ${{ matrix.service_key }}
+          workspace-id: ${{ steps.bootstrap.outputs.workspace-id }}
+          environment-id: ${{ fromJSON(steps.repo_sync.outputs.environment-uids-json).prod }}
+          cluster-name: ${{ matrix.cluster_name }}
+          integration-backend: ${{ env.POSTMAN_INTEGRATION_BACKEND }}
+          postman-access-token: ${{ secrets.POSTMAN_ACCESS_TOKEN }}
+          postman-api-key: ${{ secrets.POSTMAN_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Postman reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postman-${{ matrix.service_key }}-reports
+          path: ${{ env.REPORTS_DIR }}
+          if-no-files-found: ignore
+
+      - name: Write job summary
+        if: always()
+        shell: bash
+        run: |
+          {
+            echo "### ${{ matrix.service_name }}"
+            echo ""
+            echo "- Service key: \`${{ matrix.service_key }}\`"
+            echo "- Workspace ID: \`${{ steps.bootstrap.outputs.workspace-id }}\`"
+            echo "- Spec ID: \`${{ steps.bootstrap.outputs.spec-id }}\`"
+            echo "- Baseline collection ID: \`${{ steps.bootstrap.outputs.baseline-collection-id }}\`"
+            echo "- Smoke collection ID: \`${{ steps.bootstrap.outputs.smoke-collection-id }}\`"
+            echo "- Contract collection ID: \`${{ steps.bootstrap.outputs.contract-collection-id }}\`"
+            echo "- Repo sync commit: \`${{ steps.repo_sync.outputs.commit-sha }}\`"
+          } >> "${GITHUB_STEP_SUMMARY}"

@@ -1,0 +1,30 @@
+{
+  "services": [
+    {
+      "service_key": "transfers-api",
+      "service_name": "Transfers API",
+      "domain": "core-banking",
+      "domain_code": "AF",
+      "requester_email": "owner@example.com",
+      "version": "1.0.0",
+      "spec_path": "openapi/transfers-api.yaml",
+      "spec_url": "https://raw.githubusercontent.com/danielshively-source/transfersAPI/main/openapi/transfers-api.yaml",
+      "workspace_id": "",
+      "spec_id": "",
+      "baseline_collection_id": "",
+      "smoke_collection_id": "",
+      "contract_collection_id": "",
+      "environments": [
+        "prod",
+        "stage"
+      ],
+      "runtime_urls": {
+        "prod": "https://api.example.com/transfers",
+        "stage": "https://stage-api.example.com/transfers"
+      },
+      "smoke_base_url": "https://stage-api.example.com/transfers",
+      "enable_insights": false,
+      "cluster_name": ""
+    }
+  ]
+}
