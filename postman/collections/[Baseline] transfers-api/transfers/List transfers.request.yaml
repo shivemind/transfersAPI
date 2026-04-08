@@ -20,32 +20,32 @@ examples:
           {
             "data": [
               {
-                "id": "488ca9ce-7d32-ed68-1b67-1db873f47048",
+                "id": "635d7c8b-774c-036b-89e0-76b68a1971d8",
                 "fromAccountId": "string",
                 "toAccountId": "string",
-                "amount": 8069.971811055035,
+                "amount": 4298.058533952478,
+                "currency": "string",
+                "status": "pending",
+                "reference": "string",
+                "createdAt": "2003-10-11T21:01:27.670Z",
+                "completedAt": "1966-04-13T20:03:52.552Z"
+              },
+              {
+                "id": "3544e511-31b8-7280-34a7-9d079f0aa5a9",
+                "fromAccountId": "string",
+                "toAccountId": "string",
+                "amount": 9831.370192653643,
                 "currency": "string",
                 "status": "cancelled",
                 "reference": "string",
-                "createdAt": "2013-06-11T01:06:45.093Z",
-                "completedAt": "1976-06-17T22:07:22.060Z"
-              },
-              {
-                "id": "9ceb123e-7ffd-a5b2-14c2-7a188c12e1f7",
-                "fromAccountId": "string",
-                "toAccountId": "string",
-                "amount": 4781.680711626704,
-                "currency": "string",
-                "status": "completed",
-                "reference": "string",
-                "createdAt": "1961-04-03T18:04:36.546Z",
-                "completedAt": "2013-11-01T08:41:32.745Z"
+                "createdAt": "1986-11-20T17:42:32.176Z",
+                "completedAt": "1952-02-26T16:10:12.124Z"
               }
             ],
             "meta": {
-              "total": 6696,
-              "limit": 6351,
-              "offset": 9702
+              "total": 662,
+              "limit": 4193,
+              "offset": 2092
             }
           }
       headers:
@@ -61,7 +61,7 @@ examples:
           {
             "error": "string",
             "message": "string",
-            "statusCode": 8029
+            "statusCode": 2286
           }
       headers:
         - key: Content-Type
