@@ -7,7 +7,7 @@ headers:
     value: application/json
 pathVariables:
   - key: transferId
-    value: a1cd9bfc-20bb-291f-67fb-5f4da2f863b9
+    value: e5318af3-2863-e163-5622-9833f03df2c6
 scripts:
   - type: afterResponse
     code:
@@ -34,15 +34,15 @@ examples:
         type: json
         content: |-
           {
-            "id": "ce300763-aac9-4c34-33f9-abced2aa8c8d",
+            "id": "65c78fe6-e4ff-e3f8-52c7-e9e789a74152",
             "fromAccountId": "string",
             "toAccountId": "string",
-            "amount": 2884.4581640315805,
+            "amount": 6759.688843470957,
             "currency": "string",
             "status": "pending",
             "reference": "string",
-            "createdAt": "2012-09-07T01:41:07.040Z",
-            "completedAt": "1952-01-25T23:33:23.193Z"
+            "createdAt": "2022-01-23T13:31:21.296Z",
+            "completedAt": "1966-08-15T13:21:28.352Z"
           }
       headers:
         - key: Content-Type
@@ -57,7 +57,7 @@ examples:
           {
             "error": "string",
             "message": "string",
-            "statusCode": 2151
+            "statusCode": 3271
           }
       headers:
         - key: Content-Type
@@ -72,7 +72,7 @@ examples:
           {
             "error": "string",
             "message": "string",
-            "statusCode": 2151
+            "statusCode": 3271
           }
       headers:
         - key: Content-Type
