@@ -459,14 +459,14 @@ const envEntries = [
 
 if (insightsProjectId) {
   envEntries.push(["POSTMAN_INSIGHTS_PROJECT_ID", insightsProjectId]);
-} else {
-  if (workspaceId) {
-    envEntries.push(["POSTMAN_INSIGHTS_WORKSPACE_ID", workspaceId]);
-  }
+}
 
-  if (systemEnv) {
-    envEntries.push(["POSTMAN_INSIGHTS_SYSTEM_ENV", systemEnv]);
-  }
+if (!insightsProjectId && workspaceId) {
+  envEntries.push(["POSTMAN_INSIGHTS_WORKSPACE_ID", workspaceId]);
+}
+
+if (systemEnv) {
+  envEntries.push(["POSTMAN_INSIGHTS_SYSTEM_ENV", systemEnv]);
 }
 
 const outputs = [];
