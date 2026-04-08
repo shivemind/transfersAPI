@@ -256,20 +256,16 @@ ${script}
 }
 
 function buildAgentManifest({ namespace, clusterName, workspaceId, systemEnv }) {
-  const optionalAgentEnv = [];
-  if (workspaceId) {
-    optionalAgentEnv.push(
-      `            - name: POSTMAN_INSIGHTS_WORKSPACE_ID\n              value: ${toYamlScalar(workspaceId)}`
-    );
-  }
-
-  if (systemEnv) {
-    optionalAgentEnv.push(
-      `            - name: POSTMAN_INSIGHTS_SYSTEM_ENV\n              value: ${toYamlScalar(systemEnv)}`
-    );
-  }
-
-  const optionalEnvBlock = optionalAgentEnv.length > 0 ? `\n${optionalAgentEnv.join("\n")}` : "";
+  const workspaceEnvBlock = workspaceId
+    ? `            - name: POSTMAN_INSIGHTS_WORKSPACE_ID
+              value: ${toYamlScalar(workspaceId)}
+`
+    : "";
+  const systemEnvBlock = systemEnv
+    ? `            - name: POSTMAN_INSIGHTS_SYSTEM_ENV
+              value: ${toYamlScalar(systemEnv)}
+`
+    : "";
 
   return `apiVersion: v1
 kind: Namespace
@@ -373,8 +369,8 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: postman-agent-secrets
-                  key: postman-api-key${optionalEnvBlock}
-            - name: POSTMAN_INSIGHTS_K8S_NODE
+                  key: postman-api-key
+${workspaceEnvBlock}${systemEnvBlock}            - name: POSTMAN_INSIGHTS_K8S_NODE
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
@@ -459,9 +455,7 @@ const envEntries = [
 
 if (insightsProjectId) {
   envEntries.push(["POSTMAN_INSIGHTS_PROJECT_ID", insightsProjectId]);
-}
-
-if (!insightsProjectId && workspaceId) {
+} else if (workspaceId) {
   envEntries.push(["POSTMAN_INSIGHTS_WORKSPACE_ID", workspaceId]);
 }
 
