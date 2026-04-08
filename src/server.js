@@ -176,6 +176,7 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, {
         status: "ok",
         service: serviceName,
+        projectId: process.env.POSTMAN_INSIGHTS_PROJECT_ID || "",
         workspaceId: process.env.POSTMAN_INSIGHTS_WORKSPACE_ID || "",
         systemEnv: process.env.POSTMAN_INSIGHTS_SYSTEM_ENV || "",
         downstreams: {

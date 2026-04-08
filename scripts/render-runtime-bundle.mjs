@@ -434,6 +434,10 @@ const port = Number(args.port || graph.port || 8080);
 const image = args.image || graph.image || `${service.service_key}:dev`;
 const workspaceId =
   args["workspace-id"] || service.workspace_id || readWorkspaceIdFromResources(repoRoot);
+const insightsProjectId =
+  args["insights-project-id"] || service.insights_project_id || "";
+const insightsApplicationId =
+  args["insights-application-id"] || service.insights_application_id || "";
 const systemEnvMap = args["system-env-map"]
   ? JSON.parse(args["system-env-map"])
   : service.system_env_map || {};
@@ -453,12 +457,16 @@ const envEntries = [
   ...Object.entries(graph.env || {})
 ];
 
-if (workspaceId) {
-  envEntries.push(["POSTMAN_INSIGHTS_WORKSPACE_ID", workspaceId]);
-}
+if (insightsProjectId) {
+  envEntries.push(["POSTMAN_INSIGHTS_PROJECT_ID", insightsProjectId]);
+} else {
+  if (workspaceId) {
+    envEntries.push(["POSTMAN_INSIGHTS_WORKSPACE_ID", workspaceId]);
+  }
 
-if (systemEnv) {
-  envEntries.push(["POSTMAN_INSIGHTS_SYSTEM_ENV", systemEnv]);
+  if (systemEnv) {
+    envEntries.push(["POSTMAN_INSIGHTS_SYSTEM_ENV", systemEnv]);
+  }
 }
 
 const outputs = [];
@@ -516,6 +524,8 @@ fs.writeFileSync(
       image,
       workspace_id: workspaceId,
       system_env: systemEnv,
+      insights_project_id: insightsProjectId,
+      insights_application_id: insightsApplicationId,
       isolate_graph_pods: isolateGraphPods,
       outputs
     },

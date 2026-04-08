@@ -33,7 +33,7 @@ function build_and_import_image() {
 function render_bundle() {
   local repo_dir="$1"
   local include_agent="$2"
-  (cd "$repo_dir" && node scripts/render-runtime-bundle.mjs --namespace "${GRAPH_NAMESPACE}" --cluster-name "${K3D_CLUSTER_NAME}" --output-dir k8s/rendered --include-agent "${include_agent}")
+  (cd "$repo_dir" && node scripts/render-runtime-bundle.mjs --namespace "${GRAPH_NAMESPACE}" --output-dir k8s/rendered --include-agent "${include_agent}")
 }
 
 require_command docker

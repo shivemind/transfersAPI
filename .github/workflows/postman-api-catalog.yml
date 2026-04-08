@@ -333,7 +333,51 @@ jobs:
             --workspace-id "${{ steps.bootstrap.outputs.workspace-id }}" \
             --system-env-map '${{ toJSON(matrix.system_env_map) }}' \
             --cluster-name "${{ matrix.cluster_name }}" \
+            --insights-project-id "${{ steps.insights_onboarding.outputs.provider-service-id || matrix.insights_project_id }}" \
+            --insights-application-id "${{ steps.insights_onboarding.outputs.application-id || matrix.insights_application_id }}" \
             --output-dir "${REPORTS_DIR}/runtime/${{ matrix.service_key }}"
+
+      - name: Persist Insights project ids
+        if: ${{ matrix.enable_insights && github.event_name != 'pull_request' && steps.insights_onboarding.outputs.provider-service-id != '' }}
+        shell: bash
+        env:
+          SERVICE_KEY: ${{ matrix.service_key }}
+          INSIGHTS_PROJECT_ID: ${{ steps.insights_onboarding.outputs.provider-service-id }}
+          INSIGHTS_APPLICATION_ID: ${{ steps.insights_onboarding.outputs.application-id }}
+        run: |
+          set -euo pipefail
+
+          tmp_manifest="$(mktemp)"
+
+          jq \
+            --arg key "${SERVICE_KEY}" \
+            --arg project "${INSIGHTS_PROJECT_ID}" \
+            --arg application "${INSIGHTS_APPLICATION_ID}" \
+            '
+            .services |= map(
+              if .service_key == $key then
+                . + {
+                  insights_project_id: $project,
+                  insights_application_id: $application
+                }
+              else
+                .
+              end
+            )
+            ' "${MANIFEST_PATH}" > "${tmp_manifest}"
+
+          if cmp -s "${MANIFEST_PATH}" "${tmp_manifest}"; then
+            rm -f "${tmp_manifest}"
+            exit 0
+          fi
+
+          mv "${tmp_manifest}" "${MANIFEST_PATH}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "${MANIFEST_PATH}"
+          git commit -m "Persist Insights project id for ${SERVICE_KEY}"
+          git push
 
       - name: Upload Postman reports
         if: always()
