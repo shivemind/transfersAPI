@@ -1,13 +1,13 @@
 type: http
 name: List transfers
-url: '{{baseUrl}}/transfers?status=pending&limit=20'
+url: '{{baseUrl}}/transfers?status=completed&limit=20'
 method: GET
 headers:
   - key: Accept
     value: application/json
 queryParams:
   - key: status
-    value: pending
+    value: completed
   - key: limit
     value: '20'
 examples:
@@ -20,32 +20,32 @@ examples:
           {
             "data": [
               {
-                "id": "87ead3e1-64ce-79c6-8370-bd335eb1ab72",
+                "id": "aa970c4a-cc2b-8498-53e6-8964bb24ae5f",
                 "fromAccountId": "string",
                 "toAccountId": "string",
-                "amount": 1984.129787861828,
+                "amount": 7372.2883688780685,
                 "currency": "string",
-                "status": "failed",
+                "status": "cancelled",
                 "reference": "string",
-                "createdAt": "2002-03-25T08:43:16.787Z",
-                "completedAt": "2013-05-09T08:27:57.661Z"
+                "createdAt": "1977-05-27T01:26:43.007Z",
+                "completedAt": "2009-03-26T20:09:59.818Z"
               },
               {
-                "id": "de17db1f-3bc1-7e91-ad23-37e1958008bc",
+                "id": "fd1e5449-1ea6-3bf3-efd8-c9fe123e3573",
                 "fromAccountId": "string",
                 "toAccountId": "string",
-                "amount": 992.3426606592889,
+                "amount": 2586.0537461189992,
                 "currency": "string",
                 "status": "pending",
                 "reference": "string",
-                "createdAt": "1989-02-25T11:19:23.371Z",
-                "completedAt": "2005-01-12T18:26:04.610Z"
+                "createdAt": "1996-04-24T19:01:20.800Z",
+                "completedAt": "1982-08-06T07:51:23.003Z"
               }
             ],
             "meta": {
-              "total": 8512,
-              "limit": 9065,
-              "offset": 9628
+              "total": 8101,
+              "limit": 7756,
+              "offset": 1395
             }
           }
       headers:
@@ -61,7 +61,7 @@ examples:
           {
             "error": "string",
             "message": "string",
-            "statusCode": 2104
+            "statusCode": 1927
           }
       headers:
         - key: Content-Type

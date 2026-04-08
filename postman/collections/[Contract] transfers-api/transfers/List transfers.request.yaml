@@ -1,13 +1,13 @@
 type: http
 name: List transfers
-url: '{{baseUrl}}/transfers?status=cancelled&limit=20'
+url: '{{baseUrl}}/transfers?status=pending&limit=20'
 method: GET
 headers:
   - key: Accept
     value: application/json
 queryParams:
   - key: status
-    value: cancelled
+    value: pending
   - key: limit
     value: '20'
 scripts:
@@ -81,32 +81,32 @@ examples:
           {
             "data": [
               {
-                "id": "4dc96987-1ac5-b470-657d-7b5da989dc47",
+                "id": "29499df2-602d-1144-98a0-af0c548ac1b6",
                 "fromAccountId": "string",
                 "toAccountId": "string",
-                "amount": 7722.88041790608,
+                "amount": 4844.138737420347,
                 "currency": "string",
-                "status": "pending",
+                "status": "completed",
                 "reference": "string",
-                "createdAt": "1980-08-02T23:42:18.360Z",
-                "completedAt": "1989-03-18T02:35:54.515Z"
+                "createdAt": "1957-10-06T08:39:36.244Z",
+                "completedAt": "2003-10-25T12:30:50.041Z"
               },
               {
-                "id": "bc5f9910-6759-0831-c643-fd1bf6c9617e",
+                "id": "c797d4e9-f720-4859-8409-df6142d91f40",
                 "fromAccountId": "string",
                 "toAccountId": "string",
-                "amount": 1588.7534807351878,
+                "amount": 2310.19053333402,
                 "currency": "string",
-                "status": "cancelled",
+                "status": "completed",
                 "reference": "string",
-                "createdAt": "1973-11-07T00:50:28.730Z",
-                "completedAt": "2008-01-24T00:29:10.240Z"
+                "createdAt": "1971-08-10T01:50:44.280Z",
+                "completedAt": "1955-10-15T14:03:36.307Z"
               }
             ],
             "meta": {
-              "total": 3384,
-              "limit": 222,
-              "offset": 6667
+              "total": 8266,
+              "limit": 5577,
+              "offset": 2631
             }
           }
       headers:
@@ -122,7 +122,7 @@ examples:
           {
             "error": "string",
             "message": "string",
-            "statusCode": 8946
+            "statusCode": 9942
           }
       headers:
         - key: Content-Type
