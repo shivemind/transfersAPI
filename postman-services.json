@@ -28,7 +28,7 @@
       },
       "smoke_base_url": "https://stage-api.example.com/transfers",
       "enable_insights": true,
-      "insights_project_id": "svc_0OJujORnFuhYBCHOX4M2kg",
+      "insights_project_id": "svc_2httd2Yhz6xi4tQBLFvUG2",
       "insights_application_id": "5ca09239-3027-47f6-ad4d-f48f82fa7446",
       "cluster_name": "postman-api-graph-k3d",
       "system_env_map": {
