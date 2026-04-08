@@ -175,6 +175,7 @@ jobs:
           environment-uids-json: ${{ toJSON(matrix.environment_uids) }}
           system-env-map-json: ${{ toJSON(matrix.system_env_map) }}
           env-runtime-urls-json: ${{ toJSON(matrix.runtime_urls) }}
+          monitor-cron: ${{ matrix.monitor_cron || '0 0 * * *' }}
           generate-ci-workflow: false
           integration-backend: ${{ env.POSTMAN_INTEGRATION_BACKEND }}
           postman-api-key: ${{ secrets.POSTMAN_API_KEY }}
@@ -413,6 +414,24 @@ jobs:
           fi
 
           echo "monitor-id=${monitor_id}" >> "${GITHUB_OUTPUT}"
+
+      - name: Activate smoke monitor schedule
+        if: ${{ steps.smoke_monitor.outputs.monitor-id != '' }}
+        shell: bash
+        env:
+          POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
+          MONITOR_ID: ${{ steps.smoke_monitor.outputs.monitor-id }}
+          MONITOR_CRON: ${{ matrix.monitor_cron || '0 0 * * *' }}
+        run: |
+          set -euo pipefail
+
+          curl --fail-with-body -sS \
+            -X PUT \
+            -H "X-Api-Key: ${POSTMAN_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "$(jq -nc --arg cron "${MONITOR_CRON}" '{monitor:{active:true,schedule:{cron:$cron,timezone:"UTC"}}}')" \
+            "https://api.getpostman.com/monitors/${MONITOR_ID}" \
+            > /dev/null
 
       - name: Run smoke monitor
         if: ${{ steps.smoke_monitor.outputs.monitor-id != '' }}

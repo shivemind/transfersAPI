@@ -14,6 +14,7 @@
       "baseline_collection_id": "52400725-5217eb70-3ed9-46af-a332-3f632257d357",
       "smoke_collection_id": "52400725-ac385884-3e37-41d1-ab26-e080a316bb78",
       "contract_collection_id": "52400725-e7186998-206d-49da-9b17-f515d777fe40",
+      "monitor_cron": "0 0 * * *",
       "environments": [
         "prod",
         "stage"
