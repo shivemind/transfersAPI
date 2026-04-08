@@ -13,7 +13,7 @@ body:
     {
       "fromAccountId": "string",
       "toAccountId": "string",
-      "amount": 3075.4030825147515,
+      "amount": 4846.827632123918,
       "currency": "string",
       "reference": "string"
     }
@@ -86,15 +86,15 @@ examples:
         type: json
         content: |-
           {
-            "id": "bd4b9e32-d209-981b-f213-79c856bea6b6",
+            "id": "5b95c430-8453-d135-9944-61256d96aef0",
             "fromAccountId": "string",
             "toAccountId": "string",
-            "amount": 7875.202252847948,
+            "amount": 4483.627024239112,
             "currency": "string",
-            "status": "failed",
+            "status": "pending",
             "reference": "string",
-            "createdAt": "1989-01-31T22:12:27.055Z",
-            "completedAt": "1989-06-15T17:19:11.536Z"
+            "createdAt": "1961-02-12T07:44:41.876Z",
+            "completedAt": "2009-05-16T01:57:10.422Z"
           }
       headers:
         - key: Content-Type
@@ -109,7 +109,7 @@ examples:
           {
             "error": "string",
             "message": "string",
-            "statusCode": 7238
+            "statusCode": 5064
           }
       headers:
         - key: Content-Type
@@ -124,7 +124,7 @@ examples:
           {
             "error": "string",
             "message": "string",
-            "statusCode": 7238
+            "statusCode": 5064
           }
       headers:
         - key: Content-Type

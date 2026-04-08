@@ -6,5 +6,6 @@ id: 5217eb70-3ed9-46af-a332-3f632257d357
 variables:
   - key: baseUrl
     value: https://stage-api.example.com/transfers
+    type: any
 items:
   - ref: ./transfers/folder.yaml

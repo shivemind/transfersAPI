@@ -38,32 +38,32 @@ examples:
           {
             "data": [
               {
-                "id": "0065fda4-5280-b6eb-a41b-4951d486bbf9",
+                "id": "74e9f89a-4ba5-a47a-b75c-841ca2ba5e57",
                 "fromAccountId": "string",
                 "toAccountId": "string",
-                "amount": 8050.090796938909,
+                "amount": 3225.298735877178,
                 "currency": "string",
                 "status": "pending",
                 "reference": "string",
-                "createdAt": "1975-11-13T09:40:53.562Z",
-                "completedAt": "1997-03-05T09:36:51.779Z"
+                "createdAt": "1997-08-01T21:38:28.534Z",
+                "completedAt": "1988-02-25T23:01:22.261Z"
               },
               {
-                "id": "32b774d3-cb23-b5f7-9a32-9d9837534aba",
+                "id": "8f3a24c1-f872-232d-9723-bb9bdea5114b",
                 "fromAccountId": "string",
                 "toAccountId": "string",
-                "amount": 1346.978231026368,
+                "amount": 8496.619781272713,
                 "currency": "string",
-                "status": "failed",
+                "status": "pending",
                 "reference": "string",
-                "createdAt": "1999-06-18T19:20:13.717Z",
-                "completedAt": "2011-10-27T07:29:33.668Z"
+                "createdAt": "1968-01-03T22:28:49.319Z",
+                "completedAt": "1983-10-12T15:50:26.811Z"
               }
             ],
             "meta": {
-              "total": 5475,
-              "limit": 3633,
-              "offset": 7489
+              "total": 5233,
+              "limit": 3006,
+              "offset": 3561
             }
           }
       headers:
@@ -79,7 +79,7 @@ examples:
           {
             "error": "string",
             "message": "string",
-            "statusCode": 1400
+            "statusCode": 3149
           }
       headers:
         - key: Content-Type
