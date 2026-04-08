@@ -114,7 +114,9 @@ jobs:
           node-version: "22"
 
       - name: Install Postman CLI
-        run: npm install -g postman-cli
+        run: |
+          npm install -g postman-cli@1.33.5
+          postman --version
 
       - name: Authenticate Postman CLI
         env:
@@ -152,42 +154,6 @@ jobs:
             --output JSON \
             2>&1 | tee "${REPORTS_DIR}/${{ matrix.service_key }}-lint.txt"
 
-      - name: Run smoke tests
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -o pipefail
-          collection_id="${{ matrix.smoke_collection_id }}"
-          if [[ -z "${collection_id}" ]]; then
-            collection_id="${{ steps.bootstrap.outputs.smoke-collection-id }}"
-          fi
-          postman collection run "${collection_id}" \
-            --env-var "baseUrl=${{ matrix.smoke_base_url }}" \
-            --env-var "apiVersion=${{ matrix.version }}" \
-            --bail failure \
-            --reporters cli,junit,json \
-            --reporter-junit-export "${REPORTS_DIR}/${{ matrix.service_key }}-smoke.junit.xml" \
-            --reporter-json-export "${REPORTS_DIR}/${{ matrix.service_key }}-smoke.json" \
-            2>&1 | tee "${REPORTS_DIR}/${{ matrix.service_key }}-smoke.txt"
-
-      - name: Run contract tests
-        continue-on-error: true
-        shell: bash
-        run: |
-          set -o pipefail
-          collection_id="${{ matrix.contract_collection_id }}"
-          if [[ -z "${collection_id}" ]]; then
-            collection_id="${{ steps.bootstrap.outputs.contract-collection-id }}"
-          fi
-          postman collection run "${collection_id}" \
-            --env-var "baseUrl=${{ matrix.smoke_base_url }}" \
-            --env-var "apiVersion=${{ matrix.version }}" \
-            --bail failure \
-            --reporters cli,junit,json \
-            --reporter-junit-export "${REPORTS_DIR}/${{ matrix.service_key }}-contract.junit.xml" \
-            --reporter-json-export "${REPORTS_DIR}/${{ matrix.service_key }}-contract.json" \
-            2>&1 | tee "${REPORTS_DIR}/${{ matrix.service_key }}-contract.txt"
-
       - name: Repo sync and publish Spec Hub-backed assets to API catalog
         id: repo_sync
         uses: postman-cs/postman-repo-sync-action@v0
@@ -210,6 +176,248 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           gh-fallback-token: ${{ secrets.GH_FALLBACK_TOKEN }}
 
+      - name: Resolve CI reporting environment and target URL
+        id: ci_env
+        shell: bash
+        env:
+          POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
+          ENVIRONMENT_UIDS_JSON: ${{ steps.repo_sync.outputs.environment-uids-json != '' && steps.repo_sync.outputs.environment-uids-json || toJSON(matrix.environment_uids) }}
+          ENVIRONMENTS_JSON: ${{ toJSON(matrix.environments) }}
+          SYSTEM_ENV_MAP_JSON: ${{ toJSON(matrix.system_env_map) }}
+          RUNTIME_URLS_JSON: ${{ toJSON(matrix.runtime_urls) }}
+          SMOKE_BASE_URL: ${{ matrix.smoke_base_url }}
+          BASELINE_COLLECTION_ID: ${{ steps.bootstrap.outputs.baseline-collection-id }}
+          FALLBACK_BASELINE_COLLECTION_ID: ${{ matrix.baseline_collection_id }}
+        run: |
+          set -euo pipefail
+
+          is_placeholder_url() {
+            local url="${1:-}"
+            [[ -z "${url}" ]] && return 0
+            [[ "${url}" == *"example.com"* ]] && return 0
+            [[ "${url}" == *"localhost"* ]] && return 0
+            [[ "${url}" == *"127.0.0.1"* ]] && return 0
+            [[ "${url}" == *".svc.cluster.local"* ]] && return 0
+            return 1
+          }
+
+          preferred_env="$(jq -r 'keys[0] // empty' <<<"${SYSTEM_ENV_MAP_JSON}")"
+          if [[ -z "${preferred_env}" ]]; then
+            preferred_env="$(jq -r '.[0] // empty' <<<"${ENVIRONMENTS_JSON}")"
+          fi
+
+          if [[ -z "${preferred_env}" ]]; then
+            echo "No Postman environments configured for CI reporting." >&2
+            exit 1
+          fi
+
+          environment_id="$(jq -r --arg key "${preferred_env}" '.[$key] // empty' <<<"${ENVIRONMENT_UIDS_JSON}")"
+          if [[ -z "${environment_id}" ]]; then
+            echo "Missing environment UID for ${preferred_env}." >&2
+            exit 1
+          fi
+
+          base_url="$(jq -r --arg key "${preferred_env}" '.[$key] // empty' <<<"${RUNTIME_URLS_JSON}")"
+          if is_placeholder_url "${base_url}" && ! is_placeholder_url "${SMOKE_BASE_URL}"; then
+            base_url="${SMOKE_BASE_URL}"
+          fi
+
+          if is_placeholder_url "${base_url}"; then
+            collection_id="${BASELINE_COLLECTION_ID:-}"
+            if [[ -z "${collection_id}" ]]; then
+              collection_id="${FALLBACK_BASELINE_COLLECTION_ID:-}"
+            fi
+
+            if [[ -z "${collection_id}" ]]; then
+              echo "Unable to resolve a baseline collection ID for mock discovery." >&2
+              exit 1
+            fi
+
+            mocks_response="$(curl --fail-with-body -sS -H "X-Api-Key: ${POSTMAN_API_KEY}" "https://api.getpostman.com/mocks")"
+            base_url="$(jq -r --arg collection_uid "${collection_id}" '
+              .mocks
+              | map(select(.collection == $collection_uid and ((.deactivated // false) | not)))
+              | first
+              | .mockUrl // empty
+            ' <<<"${mocks_response}")"
+          fi
+
+          if is_placeholder_url "${base_url}"; then
+            echo "Unable to resolve a reachable baseUrl for ${preferred_env}." >&2
+            exit 1
+          fi
+
+          echo "environment-name=${preferred_env}" >> "${GITHUB_OUTPUT}"
+          echo "environment-id=${environment_id}" >> "${GITHUB_OUTPUT}"
+          echo "base-url=${base_url}" >> "${GITHUB_OUTPUT}"
+
+      - name: Sync Postman environment baseUrl for reporting
+        shell: bash
+        env:
+          POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
+          ENVIRONMENT_ID: ${{ steps.ci_env.outputs.environment-id }}
+          BASE_URL: ${{ steps.ci_env.outputs.base-url }}
+        run: |
+          set -euo pipefail
+
+          environment_response="$(
+            curl --fail-with-body -sS \
+              -H "X-Api-Key: ${POSTMAN_API_KEY}" \
+              "https://api.getpostman.com/environments/${ENVIRONMENT_ID}"
+          )"
+
+          updated_environment="$(
+            jq --arg base_url "${BASE_URL}" '
+              .environment.values = (
+                (.environment.values // [])
+                | if any(.[]; .key == "baseUrl") then
+                    map(
+                      if .key == "baseUrl" then
+                        .value = $base_url
+                      else
+                        .
+                      end
+                    )
+                  else
+                    . + [{
+                      key: "baseUrl",
+                      value: $base_url,
+                      type: "default",
+                      enabled: true
+                    }]
+                  end
+              )
+            ' <<<"${environment_response}"
+          )"
+
+          curl --fail-with-body -sS \
+            -X PUT \
+            -H "X-Api-Key: ${POSTMAN_API_KEY}" \
+            -H "Content-Type: application/json" \
+            -d "${updated_environment}" \
+            "https://api.getpostman.com/environments/${ENVIRONMENT_ID}" \
+            > /dev/null
+
+      - name: Run smoke tests
+        continue-on-error: true
+        shell: bash
+        env:
+          POSTMAN_CI_INTEGRATION_ID: ${{ vars.POSTMAN_CI_INTEGRATION_ID }}
+        run: |
+          set -euo pipefail
+          collection_id="${{ matrix.smoke_collection_id }}"
+          if [[ -z "${collection_id}" ]]; then
+            collection_id="${{ steps.bootstrap.outputs.smoke-collection-id }}"
+          fi
+
+          run_args=(
+            collection run "${collection_id}"
+            -e "${{ steps.ci_env.outputs.environment-id }}"
+            --env-var "baseUrl=${{ steps.ci_env.outputs.base-url }}"
+            --env-var "apiVersion=${{ matrix.version }}"
+            --bail failure
+            --reporters cli,junit,json
+            --reporter-junit-export "${REPORTS_DIR}/${{ matrix.service_key }}-smoke.junit.xml"
+            --reporter-json-export "${REPORTS_DIR}/${{ matrix.service_key }}-smoke.json"
+          )
+
+          if [[ -n "${POSTMAN_CI_INTEGRATION_ID:-}" ]]; then
+            run_args+=(--integration-id "${POSTMAN_CI_INTEGRATION_ID}")
+          else
+            echo "POSTMAN_CI_INTEGRATION_ID is not set; Postman may not attach smoke results to API Catalog endpoint coverage." >&2
+          fi
+
+          if postman collection run --help | rg -q -- '--report-events'; then
+            run_args+=(--report-events)
+          else
+            echo "Installed Postman CLI does not support --report-events; CI/CD activity may remain empty until the runner CLI supports it." >&2
+          fi
+
+          postman "${run_args[@]}" 2>&1 | tee "${REPORTS_DIR}/${{ matrix.service_key }}-smoke.txt"
+
+      - name: Run contract tests
+        continue-on-error: true
+        shell: bash
+        env:
+          POSTMAN_CI_INTEGRATION_ID: ${{ vars.POSTMAN_CI_INTEGRATION_ID }}
+        run: |
+          set -euo pipefail
+          collection_id="${{ matrix.contract_collection_id }}"
+          if [[ -z "${collection_id}" ]]; then
+            collection_id="${{ steps.bootstrap.outputs.contract-collection-id }}"
+          fi
+
+          run_args=(
+            collection run "${collection_id}"
+            -e "${{ steps.ci_env.outputs.environment-id }}"
+            --env-var "baseUrl=${{ steps.ci_env.outputs.base-url }}"
+            --env-var "apiVersion=${{ matrix.version }}"
+            --bail failure
+            --reporters cli,junit,json
+            --reporter-junit-export "${REPORTS_DIR}/${{ matrix.service_key }}-contract.junit.xml"
+            --reporter-json-export "${REPORTS_DIR}/${{ matrix.service_key }}-contract.json"
+          )
+
+          if [[ -n "${POSTMAN_CI_INTEGRATION_ID:-}" ]]; then
+            run_args+=(--integration-id "${POSTMAN_CI_INTEGRATION_ID}")
+          else
+            echo "POSTMAN_CI_INTEGRATION_ID is not set; Postman may not attach contract results to API Catalog endpoint coverage." >&2
+          fi
+
+          if postman collection run --help | rg -q -- '--report-events'; then
+            run_args+=(--report-events)
+          else
+            echo "Installed Postman CLI does not support --report-events; CI/CD activity may remain empty until the runner CLI supports it." >&2
+          fi
+
+          postman "${run_args[@]}" 2>&1 | tee "${REPORTS_DIR}/${{ matrix.service_key }}-contract.txt"
+
+      - name: Resolve smoke monitor
+        id: smoke_monitor
+        shell: bash
+        env:
+          POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
+          SMOKE_COLLECTION_ID: ${{ steps.bootstrap.outputs.smoke-collection-id }}
+          FALLBACK_SMOKE_COLLECTION_ID: ${{ matrix.smoke_collection_id }}
+          ENVIRONMENT_ID: ${{ steps.ci_env.outputs.environment-id }}
+        run: |
+          set -euo pipefail
+
+          collection_id="${SMOKE_COLLECTION_ID:-}"
+          if [[ -z "${collection_id}" ]]; then
+            collection_id="${FALLBACK_SMOKE_COLLECTION_ID:-}"
+          fi
+
+          monitors_response="$(curl --fail-with-body -sS -H "X-Api-Key: ${POSTMAN_API_KEY}" "https://api.getpostman.com/monitors")"
+
+          monitor_id="$(jq -r --arg collection_uid "${collection_id}" --arg environment_uid "${ENVIRONMENT_ID}" '
+            .monitors
+            | map(select(.collectionUid == $collection_uid and .environmentUid == $environment_uid))
+            | first
+            | .id // empty
+          ' <<<"${monitors_response}")"
+
+          if [[ -z "${monitor_id}" ]]; then
+            monitor_id="$(jq -r --arg collection_uid "${collection_id}" '
+              .monitors
+              | map(select(.collectionUid == $collection_uid))
+              | first
+              | .id // empty
+            ' <<<"${monitors_response}")"
+          fi
+
+          echo "monitor-id=${monitor_id}" >> "${GITHUB_OUTPUT}"
+
+      - name: Run smoke monitor
+        if: ${{ steps.smoke_monitor.outputs.monitor-id != '' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          postman monitor run "${{ steps.smoke_monitor.outputs.monitor-id }}" \
+            --timeout 900000 \
+            2>&1 | tee "${REPORTS_DIR}/${{ matrix.service_key }}-monitor.txt"
+
       - name: Resolve primary Insights environment
         if: ${{ matrix.enable_insights }}
         id: insights_env
@@ -221,7 +429,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          primary_env="$(jq -r '.[0] // empty' <<<"${ENVIRONMENTS_JSON}")"
+          primary_env="$(jq -r 'keys[0] // empty' <<<"${SYSTEM_ENV_MAP_JSON}")"
+          if [[ -z "${primary_env}" ]]; then
+            primary_env="$(jq -r '.[0] // empty' <<<"${ENVIRONMENTS_JSON}")"
+          fi
           if [[ -z "${primary_env}" ]]; then
             echo "No environments configured for Insights onboarding." >&2
             exit 1
@@ -402,6 +613,9 @@ jobs:
             echo "- Contract collection ID: \`${{ steps.bootstrap.outputs.contract-collection-id }}\`"
             echo "- Workspace link status: \`${{ steps.repo_sync.outputs.workspace-link-status }}\`"
             echo "- Environment sync status: \`${{ steps.repo_sync.outputs.environment-sync-status }}\`"
+            echo "- CI environment: \`${{ steps.ci_env.outputs.environment-name || 'n/a' }}\`"
+            echo "- CI base URL: \`${{ steps.ci_env.outputs.base-url || 'n/a' }}\`"
+            echo "- Smoke monitor ID: \`${{ steps.smoke_monitor.outputs.monitor-id || 'n/a' }}\`"
             echo "- Insights onboarding status: \`${{ steps.insights_onboarding.outputs.status || 'skipped' }}\`"
             echo "- Insights application ID: \`${{ steps.insights_onboarding.outputs.application-id || 'n/a' }}\`"
             echo "- Repo sync commit: \`${{ steps.repo_sync.outputs.commit-sha }}\`"
