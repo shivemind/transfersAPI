@@ -45,6 +45,7 @@
           "schedule": "*/2 * * * *",
           "requests_per_run": 20,
           "method": "POST",
+          "cancel_after_create": true,
           "path": "/transfers",
           "body": {
             "fromAccountId": "acct-checking-001",

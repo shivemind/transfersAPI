@@ -96,6 +96,8 @@ metadata:
   namespace: ${namespace}
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: ${serviceName}
@@ -141,10 +143,12 @@ function buildTrafficScript(targetUrl, traffic) {
   const requestsPerRun = Number(traffic.requests_per_run || 20);
   const encodedBody = traffic.body ? JSON.stringify(traffic.body).replace(/'/g, "'\"'\"'") : "";
   const method = (traffic.method || "GET").toUpperCase();
+  const cancelAfterCreate = Boolean(traffic.cancel_after_create);
 
   const lines = [
     `TARGET_URL='${targetUrl}'`,
     `REQUESTS_PER_RUN='${requestsPerRun}'`,
+    `CANCEL_AFTER_CREATE='${cancelAfterCreate ? "true" : "false"}'`,
     "for i in $(seq 1 \"$REQUESTS_PER_RUN\"); do",
     "  TRACE_ID=$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 32)",
     "  SPAN_ID=$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 16)",
@@ -153,17 +157,29 @@ function buildTrafficScript(targetUrl, traffic) {
 
   if (method === "POST") {
     lines.push(
-      "  wget -q -O /dev/null \\",
+      "  RESPONSE=$(wget -q -O - \\",
       "    --header=\"Content-Type: application/json\" \\",
       "    --header=\"traceparent: ${TRACEPARENT}\" \\",
       `    --post-data='${encodedBody}' \\`,
-      "    \"$TARGET_URL\""
+      "    \"$TARGET_URL\" 2>/dev/null || true)",
+      "  if [ \"$CANCEL_AFTER_CREATE\" = \"true\" ]; then",
+      "    COMPACT_RESPONSE=$(printf '%s' \"$RESPONSE\" | tr -d '\\n\\r ')",
+      "    TRANSFER_ID=$(printf '%s' \"$COMPACT_RESPONSE\" | sed -n 's/.*\"id\":\"\\([^\"]*\\)\".*/\\1/p' | head -n 1)",
+      "    if [ -n \"$TRANSFER_ID\" ]; then",
+        "      CANCEL_SPAN_ID=$(cat /dev/urandom | tr -dc 'a-f0-9' | head -c 16)",
+        "      CANCEL_TRACEPARENT=\"00-${TRACE_ID}-${CANCEL_SPAN_ID}-01\"",
+        "      wget -q -O /dev/null \\",
+      "        --header=\"traceparent: ${CANCEL_TRACEPARENT}\" \\",
+      "        --post-data='' \\",
+      "        \"$TARGET_URL/${TRANSFER_ID}/cancel\" 2>/dev/null || true",
+      "    fi",
+      "  fi"
     );
   } else {
     lines.push(
       "  wget -q -O /dev/null \\",
       "    --header=\"traceparent: ${TRACEPARENT}\" \\",
-      "    \"$TARGET_URL\""
+      "    \"$TARGET_URL\" 2>/dev/null || true"
     );
   }
 
@@ -223,6 +239,64 @@ kind: Namespace
 metadata:
   name: postman-insights-namespace
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: postman-insights-service-account
+  namespace: postman-insights-namespace
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: postman-insights-read-only-role
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - pods
+      - pods/status
+      - services
+      - endpoints
+      - namespaces
+      - nodes
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - apps
+    resources:
+      - deployments
+      - replicasets
+      - daemonsets
+      - statefulsets
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - batch
+    resources:
+      - jobs
+      - cronjobs
+    verbs:
+      - get
+      - list
+      - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: postman-insights-view-all-resources-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: postman-insights-read-only-role
+subjects:
+  - kind: ServiceAccount
+    name: postman-insights-service-account
+    namespace: postman-insights-namespace
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -238,6 +312,7 @@ spec:
         app: postman-insights-agent
         name: postman-insights-agent
     spec:
+      serviceAccountName: postman-insights-service-account
       hostNetwork: true
       hostPID: true
       dnsPolicy: ClusterFirstWithHostNet
@@ -267,7 +342,7 @@ spec:
                 fieldRef:
                   fieldPath: spec.nodeName
             - name: POSTMAN_INSIGHTS_CRI_ENDPOINT
-              value: /var/run/containerd/containerd.sock
+              value: /run/k3s/containerd/containerd.sock
           securityContext:
             privileged: false
             capabilities:
@@ -289,6 +364,9 @@ spec:
             - name: netns
               mountPath: /host/var/run/netns
               readOnly: true
+            - name: cri-socket
+              mountPath: /run/k3s/containerd
+              readOnly: true
       volumes:
         - name: proc
           hostPath:
@@ -296,6 +374,9 @@ spec:
         - name: netns
           hostPath:
             path: /var/run/netns
+        - name: cri-socket
+          hostPath:
+            path: /run/k3s/containerd
 `;
 }
 
