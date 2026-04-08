@@ -210,6 +210,40 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           gh-fallback-token: ${{ secrets.GH_FALLBACK_TOKEN }}
 
+      - name: Ensure API Catalog application bindings
+        shell: bash
+        env:
+          POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
+          SYSTEM_ENV_MAP_JSON: ${{ toJSON(matrix.system_env_map) }}
+          WORKSPACE_ID: ${{ steps.bootstrap.outputs.workspace-id }}
+        run: |
+          set -euo pipefail
+
+          mapfile -t system_envs < <(
+            jq -r 'to_entries[]?.value // empty' <<<"${SYSTEM_ENV_MAP_JSON}" | sort -u
+          )
+
+          if [[ "${#system_envs[@]}" -eq 0 ]]; then
+            echo "No system environments configured; skipping application binding."
+            exit 0
+          fi
+
+          for system_env in "${system_envs[@]}"; do
+            if [[ -z "${system_env}" ]]; then
+              continue
+            fi
+
+            echo "Binding workspace ${WORKSPACE_ID} to system environment ${system_env}"
+            curl --fail-with-body -sS \
+              -X POST \
+              -H "x-api-key: ${POSTMAN_API_KEY}" \
+              -H "x-postman-env: production" \
+              -H "Content-Type: application/json" \
+              -d "{\"system_env\":\"${system_env}\"}" \
+              "https://api.observability.postman.com/v2/agent/api-catalog/workspaces/${WORKSPACE_ID}/applications" \
+              | jq -c .
+          done
+
       - name: Render Insights runtime bundle
         id: runtime_bundle
         shell: bash
