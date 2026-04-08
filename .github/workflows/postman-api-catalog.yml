@@ -80,12 +80,18 @@ jobs:
               filtered="${all_services}"
             else
               changed_json="$(printf '%s\n' "${changed_files}" | jq -R -s 'split("\n") | map(select(length > 0))')"
-              filtered="$(jq -c --argjson changed "${changed_json}" '
-                map(
-                  . as $service
-                  | select($changed | any(. == $service.spec_path))
-                )
-              ' <<<"${all_services}")"
+              if jq -e --arg manifest "${MANIFEST_PATH}" '
+                any(.[]; . == $manifest or . == ".github/workflows/postman-api-catalog.yml")
+              ' <<<"${changed_json}" > /dev/null; then
+                filtered="${all_services}"
+              else
+                filtered="$(jq -c --argjson changed "${changed_json}" '
+                  map(
+                    . as $service
+                    | select($changed | any(. == $service.spec_path))
+                  )
+                ' <<<"${all_services}")"
+              fi
             fi
           fi
 
