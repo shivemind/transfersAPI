@@ -67,7 +67,8 @@ function buildEnvironmentYaml(envEntries) {
 
   return envEntries
     .map(
-      ([key, value]) => `            - name: ${key}\n              value: ${toYamlScalar(value)}`
+      ([key, value]) =>
+        `            - name: ${key}\n              value: ${JSON.stringify(String(value ?? ""))}`
     )
     .join("\n");
 }
