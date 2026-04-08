@@ -73,8 +73,45 @@ function buildEnvironmentYaml(envEntries) {
     .join("\n");
 }
 
-function buildServiceManifest({ serviceName, namespace, port, image, envEntries }) {
+function buildPodLabelsYaml(serviceName, isolateGraphPods) {
+  const labels = [`        app: ${serviceName}`];
+
+  if (isolateGraphPods) {
+    labels.push('        postman.com/insights-graph: "true"');
+  }
+
+  return labels.join("\n");
+}
+
+function buildSchedulingYaml(isolateGraphPods) {
+  if (!isolateGraphPods) {
+    return "";
+  }
+
+  return `      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: postman.com/insights-graph
+                    operator: In
+                    values:
+                      - "true"
+              topologyKey: kubernetes.io/hostname
+`;
+}
+
+function buildServiceManifest({
+  serviceName,
+  namespace,
+  port,
+  image,
+  envEntries,
+  isolateGraphPods
+}) {
   const environmentBlock = buildEnvironmentYaml(envEntries);
+  const podLabelsBlock = buildPodLabelsYaml(serviceName, isolateGraphPods);
+  const schedulingBlock = buildSchedulingYaml(isolateGraphPods);
 
   return `apiVersion: v1
 kind: Service
@@ -104,11 +141,11 @@ spec:
   template:
     metadata:
       labels:
-        app: ${serviceName}
+${podLabelsBlock}
     spec:
       hostNetwork: true
       dnsPolicy: ClusterFirstWithHostNet
-      containers:
+${schedulingBlock}      containers:
         - name: app
           image: ${image}
           imagePullPolicy: IfNotPresent
@@ -405,6 +442,8 @@ const outputDirectory = path.resolve(repoRoot, args["output-dir"] || path.join("
 const includeAgent =
   String(args["include-agent"] || graph.insights_agent_owner || "false").toLowerCase() === "true";
 const traffic = graph.traffic_generator || null;
+const isolateGraphPods =
+  String(args["isolate-graph-pods"] || graph.isolate_graph_pods || "true").toLowerCase() !== "false";
 
 ensureDirectory(outputDirectory);
 
@@ -432,7 +471,8 @@ fs.writeFileSync(
     namespace,
     port,
     image,
-    envEntries
+    envEntries,
+    isolateGraphPods
   })
 );
 outputs.push(serviceManifestPath);
@@ -476,6 +516,7 @@ fs.writeFileSync(
       image,
       workspace_id: workspaceId,
       system_env: systemEnv,
+      isolate_graph_pods: isolateGraphPods,
       outputs
     },
     null,

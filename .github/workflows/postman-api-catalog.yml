@@ -210,39 +210,53 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           gh-fallback-token: ${{ secrets.GH_FALLBACK_TOKEN }}
 
-      - name: Ensure API Catalog application bindings
+      - name: Resolve primary Insights environment
+        if: ${{ matrix.enable_insights }}
+        id: insights_env
         shell: bash
         env:
-          POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
+          ENVIRONMENT_UIDS_JSON: ${{ steps.repo_sync.outputs.environment-uids-json }}
+          ENVIRONMENTS_JSON: ${{ toJSON(matrix.environments) }}
           SYSTEM_ENV_MAP_JSON: ${{ toJSON(matrix.system_env_map) }}
-          WORKSPACE_ID: ${{ steps.bootstrap.outputs.workspace-id }}
         run: |
           set -euo pipefail
 
-          mapfile -t system_envs < <(
-            jq -r 'to_entries[]?.value // empty' <<<"${SYSTEM_ENV_MAP_JSON}" | sort -u
-          )
-
-          if [[ "${#system_envs[@]}" -eq 0 ]]; then
-            echo "No system environments configured; skipping application binding."
-            exit 0
+          primary_env="$(jq -r '.[0] // empty' <<<"${ENVIRONMENTS_JSON}")"
+          if [[ -z "${primary_env}" ]]; then
+            echo "No environments configured for Insights onboarding." >&2
+            exit 1
           fi
 
-          for system_env in "${system_envs[@]}"; do
-            if [[ -z "${system_env}" ]]; then
-              continue
-            fi
+          environment_id="$(jq -r --arg key "${primary_env}" '.[$key] // empty' <<<"${ENVIRONMENT_UIDS_JSON}")"
+          system_environment_id="$(jq -r --arg key "${primary_env}" '.[$key] // empty' <<<"${SYSTEM_ENV_MAP_JSON}")"
 
-            echo "Binding workspace ${WORKSPACE_ID} to system environment ${system_env}"
-            curl --fail-with-body -sS \
-              -X POST \
-              -H "x-api-key: ${POSTMAN_API_KEY}" \
-              -H "x-postman-env: production" \
-              -H "Content-Type: application/json" \
-              -d "{\"system_env\":\"${system_env}\"}" \
-              "https://api.observability.postman.com/v2/agent/api-catalog/workspaces/${WORKSPACE_ID}/applications" \
-              | jq -c .
-          done
+          if [[ -z "${environment_id}" ]]; then
+            echo "Missing Postman environment UID for ${primary_env}." >&2
+            exit 1
+          fi
+
+          if [[ -z "${system_environment_id}" ]]; then
+            echo "Missing system environment ID for ${primary_env}." >&2
+            exit 1
+          fi
+
+          echo "primary-env=${primary_env}" >> "${GITHUB_OUTPUT}"
+          echo "environment-id=${environment_id}" >> "${GITHUB_OUTPUT}"
+          echo "system-environment-id=${system_environment_id}" >> "${GITHUB_OUTPUT}"
+
+      - name: Onboard API Catalog service to Insights
+        if: ${{ matrix.enable_insights }}
+        id: insights_onboarding
+        uses: postman-cs/postman-insights-onboarding-action@v0
+        with:
+          project-name: ${{ matrix.service_key }}
+          workspace-id: ${{ steps.bootstrap.outputs.workspace-id }}
+          environment-id: ${{ steps.insights_env.outputs.environment-id }}
+          system-environment-id: ${{ steps.insights_env.outputs.system-environment-id }}
+          cluster-name: ${{ matrix.cluster_name }}
+          postman-api-key: ${{ secrets.POSTMAN_API_KEY }}
+          postman-access-token: ${{ secrets.POSTMAN_ACCESS_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Render Insights runtime bundle
         id: runtime_bundle
@@ -279,6 +293,8 @@ jobs:
             echo "- Contract collection ID: \`${{ steps.bootstrap.outputs.contract-collection-id }}\`"
             echo "- Workspace link status: \`${{ steps.repo_sync.outputs.workspace-link-status }}\`"
             echo "- Environment sync status: \`${{ steps.repo_sync.outputs.environment-sync-status }}\`"
+            echo "- Insights onboarding status: \`${{ steps.insights_onboarding.outputs.status || 'skipped' }}\`"
+            echo "- Insights application ID: \`${{ steps.insights_onboarding.outputs.application-id || 'n/a' }}\`"
             echo "- Repo sync commit: \`${{ steps.repo_sync.outputs.commit-sha }}\`"
             echo "- Runtime bundle: \`reports/runtime/${{ matrix.service_key }}\`"
           } >> "${GITHUB_STEP_SUMMARY}"

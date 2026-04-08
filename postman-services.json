@@ -27,7 +27,7 @@
         "stage": "https://stage-api.example.com/transfers"
       },
       "smoke_base_url": "https://stage-api.example.com/transfers",
-      "enable_insights": false,
+      "enable_insights": true,
       "cluster_name": "postman-api-graph-k3d",
       "system_env_map": {
         "prod": "936898ce-cf73-4feb-827e-8a0e9d5e695e"
