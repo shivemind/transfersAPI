@@ -7,15 +7,13 @@ headers:
     value: application/json
   - key: Accept
     value: application/json
-  - key: x-mock-response-name
-    value: Created
 body:
   type: json
   content: |-
     {
       "fromAccountId": "string",
       "toAccountId": "string",
-      "amount": 4289.264970838726,
+      "amount": 3744.557675644613,
       "currency": "string",
       "reference": "string"
     }
@@ -45,15 +43,15 @@ examples:
         type: json
         content: |-
           {
-            "id": "5e179907-cffa-6dea-3292-d13613d65103",
+            "id": "d1063412-1fc9-a306-cb64-803c7f5a9e1d",
             "fromAccountId": "string",
             "toAccountId": "string",
-            "amount": 7750.655002163194,
+            "amount": 7130.437372779174,
             "currency": "string",
-            "status": "completed",
+            "status": "pending",
             "reference": "string",
-            "createdAt": "2002-03-31T10:21:33.983Z",
-            "completedAt": "1984-01-29T14:00:46.330Z"
+            "createdAt": "1980-03-05T22:38:44.893Z",
+            "completedAt": "2008-02-29T19:32:44.319Z"
           }
       headers:
         - key: Content-Type
@@ -68,7 +66,7 @@ examples:
           {
             "error": "string",
             "message": "string",
-            "statusCode": 6803
+            "statusCode": 9099
           }
       headers:
         - key: Content-Type
@@ -83,7 +81,7 @@ examples:
           {
             "error": "string",
             "message": "string",
-            "statusCode": 6803
+            "statusCode": 9099
           }
       headers:
         - key: Content-Type

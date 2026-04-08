@@ -7,15 +7,13 @@ headers:
     value: application/json
   - key: Accept
     value: application/json
-  - key: x-mock-response-name
-    value: Created
 body:
   type: json
   content: |-
     {
       "fromAccountId": "string",
       "toAccountId": "string",
-      "amount": 3627.1856708947726,
+      "amount": 5980.710259335578,
       "currency": "string",
       "reference": "string"
     }
@@ -27,15 +25,15 @@ examples:
         type: json
         content: |-
           {
-            "id": "d5716270-90a4-4c3b-13c2-426335e21c75",
+            "id": "104c0487-d585-7289-082c-5c5bc72961cf",
             "fromAccountId": "string",
             "toAccountId": "string",
-            "amount": 9843.198418791002,
+            "amount": 6720.521728024338,
             "currency": "string",
             "status": "pending",
             "reference": "string",
-            "createdAt": "1966-08-18T04:30:29.655Z",
-            "completedAt": "1957-01-01T19:29:35.145Z"
+            "createdAt": "1953-03-22T01:29:53.146Z",
+            "completedAt": "1959-08-18T14:25:24.613Z"
           }
       headers:
         - key: Content-Type
@@ -50,7 +48,7 @@ examples:
           {
             "error": "string",
             "message": "string",
-            "statusCode": 7261
+            "statusCode": 749
           }
       headers:
         - key: Content-Type
@@ -65,7 +63,7 @@ examples:
           {
             "error": "string",
             "message": "string",
-            "statusCode": 7261
+            "statusCode": 749
           }
       headers:
         - key: Content-Type
