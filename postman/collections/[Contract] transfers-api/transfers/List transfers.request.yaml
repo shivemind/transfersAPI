@@ -81,32 +81,32 @@ examples:
           {
             "data": [
               {
-                "id": "54c4f2f5-597a-b397-1533-4b475b0dbf1f",
+                "id": "3dacc05c-99a8-4bb5-1d4a-9d551b589e78",
                 "fromAccountId": "string",
                 "toAccountId": "string",
-                "amount": 205.95640228235902,
+                "amount": 6132.073578455482,
                 "currency": "string",
                 "status": "pending",
                 "reference": "string",
-                "createdAt": "2015-04-08T07:46:49.455Z",
-                "completedAt": "1961-10-27T02:06:36.680Z"
+                "createdAt": "1980-12-17T15:49:30.686Z",
+                "completedAt": "1954-09-02T05:27:37.262Z"
               },
               {
-                "id": "6bd53b17-4582-dc79-9633-deb9b6e35267",
+                "id": "4f767dbf-ec78-c2e1-5ef6-87091170d552",
                 "fromAccountId": "string",
                 "toAccountId": "string",
-                "amount": 7749.377073330712,
+                "amount": 3053.0332924787017,
                 "currency": "string",
                 "status": "pending",
                 "reference": "string",
-                "createdAt": "1953-11-01T21:18:18.341Z",
-                "completedAt": "1991-01-06T12:10:22.225Z"
+                "createdAt": "1978-08-01T00:56:06.627Z",
+                "completedAt": "1947-11-18T11:03:11.544Z"
               }
             ],
             "meta": {
-              "total": 935,
-              "limit": 6325,
-              "offset": 4882
+              "total": 6838,
+              "limit": 5029,
+              "offset": 4454
             }
           }
       headers:
@@ -122,7 +122,7 @@ examples:
           {
             "error": "string",
             "message": "string",
-            "statusCode": 3066
+            "statusCode": 2556
           }
       headers:
         - key: Content-Type
