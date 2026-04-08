@@ -52,6 +52,19 @@ function dedupeStrings(values) {
   return result;
 }
 
+function normalizePostmanEnvironmentId(value) {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    return "";
+  }
+
+  const uuidMatch = normalized.match(
+    /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  );
+
+  return uuidMatch ? uuidMatch[0] : normalized;
+}
+
 function normalizeWorkspaceEntries(workspaces) {
   const merged = new Map();
 
@@ -63,7 +76,9 @@ function normalizeWorkspaceEntries(workspaces) {
 
     const envIds = dedupeStrings(
       (workspace?.associations || []).map((association) =>
-        String(association?.postmanEnvironmentId || "")
+        normalizePostmanEnvironmentId(
+          association?.truncatedPostmanEnvironmentId || association?.postmanEnvironmentId || ""
+        )
       )
     );
 
@@ -173,6 +188,7 @@ async function putSystemEnvAssociations(systemEnvironmentId, workspaceEntries, a
 
 async function associateSystemEnvironmentBatch(workspaceId, associations, accessToken, teamId) {
   const grouped = new Map();
+  let verifiedAssociationCount = 0;
 
   for (const association of associations) {
     const systemEnvId = String(association.systemEnvId || "").trim();
@@ -185,17 +201,30 @@ async function associateSystemEnvironmentBatch(workspaceId, associations, access
 
   for (const [systemEnvId, envUids] of grouped.entries()) {
     const existing = await getSystemEnvAssociations(systemEnvId, accessToken, teamId);
-    const currentEnvUids =
-      existing.find((entry) => entry.workspaceId === workspaceId)?.postmanEnvironmentIds || [];
-    const merged = replaceWorkspaceEntry(existing, workspaceId, [...currentEnvUids, ...envUids]);
+    const currentEnvUids = dedupeStrings(
+      existing.find((entry) => entry.workspaceId === workspaceId)?.postmanEnvironmentIds || []
+    );
+    const desiredEnvUids = dedupeStrings(envUids);
+    const missingEnvUids = desiredEnvUids.filter((envUid) => !currentEnvUids.includes(envUid));
+
+    if (missingEnvUids.length === 0) {
+      verifiedAssociationCount += desiredEnvUids.length;
+      continue;
+    }
+
+    const merged = replaceWorkspaceEntry(existing, workspaceId, [...currentEnvUids, ...desiredEnvUids]);
 
     try {
       await putSystemEnvAssociations(systemEnvId, merged, accessToken, teamId);
+      verifiedAssociationCount += desiredEnvUids.length;
     } catch {
       const fresh = replaceWorkspaceEntry([], workspaceId, envUids);
       await putSystemEnvAssociations(systemEnvId, fresh, accessToken, teamId);
+      verifiedAssociationCount += desiredEnvUids.length;
     }
   }
+
+  return verifiedAssociationCount;
 }
 
 async function main() {
@@ -228,11 +257,16 @@ async function main() {
 
   const associations = mappedEnvironmentNames.map((name) => ({
     envName: name,
-    envUid: String(environmentUids[name]).trim(),
+    envUid: normalizePostmanEnvironmentId(environmentUids[name]),
     systemEnvId: String(systemEnvMap[name]).trim()
   }));
 
-  await associateSystemEnvironmentBatch(workspaceId, associations, accessToken, teamId);
+  const verifiedAssociationCount = await associateSystemEnvironmentBatch(
+    workspaceId,
+    associations,
+    accessToken,
+    teamId
+  );
 
   const summary = {
     workspaceId,
@@ -244,11 +278,13 @@ async function main() {
     }))
   };
 
-  console.log(`Associated ${associations.length} Postman environment(s) to system environment(s) through Bifrost.`);
+  console.log(
+    `Verified ${verifiedAssociationCount} Postman environment association(s) through Bifrost.`
+  );
   console.log(JSON.stringify(summary, null, 2));
 
   setOutput("status", "success");
-  setOutput("association-count", String(associations.length));
+  setOutput("association-count", String(verifiedAssociationCount));
   setOutput("summary-json", JSON.stringify(summary));
 }
 
