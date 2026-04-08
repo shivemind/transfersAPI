@@ -128,6 +128,8 @@ jobs:
 
       - name: Bootstrap workspace, spec, and collections
         id: bootstrap
+        env:
+          POSTMAN_TEAM_ID: ${{ vars.POSTMAN_TEAM_ID }}
         uses: postman-cs/postman-bootstrap-action@v0
         with:
           project-name: ${{ matrix.service_key }}
@@ -135,6 +137,7 @@ jobs:
           domain-code: ${{ matrix.domain_code }}
           requester-email: ${{ matrix.requester_email }}
           workspace-admin-user-ids: ${{ vars.POSTMAN_WORKSPACE_ADMIN_USER_IDS }}
+          workspace-team-id: ${{ vars.POSTMAN_TEAM_ID }}
           spec-url: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.event.pull_request.head.sha || github.sha }}/${{ matrix.spec_path }}
           workspace-id: ${{ matrix.workspace_id }}
           spec-id: ${{ matrix.spec_id }}
@@ -144,6 +147,7 @@ jobs:
           collection-sync-mode: reuse
           integration-backend: ${{ env.POSTMAN_INTEGRATION_BACKEND }}
           postman-api-key: ${{ secrets.POSTMAN_API_KEY }}
+          postman-access-token: ${{ secrets.POSTMAN_ACCESS_TOKEN }}
 
       - name: Lint OpenAPI spec
         shell: bash
@@ -156,6 +160,8 @@ jobs:
 
       - name: Repo sync and publish Spec Hub-backed assets to API catalog
         id: repo_sync
+        env:
+          POSTMAN_TEAM_ID: ${{ vars.POSTMAN_TEAM_ID }}
         uses: postman-cs/postman-repo-sync-action@v0
         with:
           project-name: ${{ matrix.service_key }}
