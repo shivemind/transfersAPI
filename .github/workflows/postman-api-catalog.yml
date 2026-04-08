@@ -133,7 +133,7 @@ jobs:
           domain-code: ${{ matrix.domain_code }}
           requester-email: ${{ matrix.requester_email }}
           workspace-admin-user-ids: ${{ vars.POSTMAN_WORKSPACE_ADMIN_USER_IDS }}
-          spec-url: ${{ matrix.spec_url }}
+          spec-url: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.event.pull_request.head.sha || github.sha }}/${{ matrix.spec_path }}
           workspace-id: ${{ matrix.workspace_id }}
           spec-id: ${{ matrix.spec_id }}
           baseline-collection-id: ${{ matrix.baseline_collection_id }}
