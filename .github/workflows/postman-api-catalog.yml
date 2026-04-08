@@ -247,16 +247,81 @@ jobs:
       - name: Onboard API Catalog service to Insights
         if: ${{ matrix.enable_insights }}
         id: insights_onboarding
-        uses: postman-cs/postman-insights-onboarding-action@v0
-        with:
-          project-name: ${{ matrix.service_key }}
-          workspace-id: ${{ steps.bootstrap.outputs.workspace-id }}
-          environment-id: ${{ steps.insights_env.outputs.environment-id }}
-          system-environment-id: ${{ steps.insights_env.outputs.system-environment-id }}
-          cluster-name: ${{ matrix.cluster_name }}
-          postman-api-key: ${{ secrets.POSTMAN_API_KEY }}
-          postman-access-token: ${{ secrets.POSTMAN_ACCESS_TOKEN }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        env:
+          POSTMAN_ACCESS_TOKEN: ${{ secrets.POSTMAN_ACCESS_TOKEN }}
+          POSTMAN_API_KEY: ${{ secrets.POSTMAN_API_KEY }}
+          POSTMAN_TEAM_ID: ${{ vars.POSTMAN_TEAM_ID }}
+          WORKSPACE_ID: ${{ steps.bootstrap.outputs.workspace-id }}
+          SYSTEM_ENVIRONMENT_ID: ${{ steps.insights_env.outputs.system-environment-id }}
+          SERVICE_KEY: ${{ matrix.service_key }}
+        run: |
+          set -euo pipefail
+
+          if [[ -z "${POSTMAN_ACCESS_TOKEN}" ]]; then
+            echo "POSTMAN_ACCESS_TOKEN is required for Insights onboarding." >&2
+            exit 1
+          fi
+
+          headers=(
+            -H "content-type: application/json"
+            -H "x-access-token: ${POSTMAN_ACCESS_TOKEN}"
+          )
+
+          if [[ -n "${POSTMAN_TEAM_ID:-}" ]]; then
+            headers+=(-H "x-entity-team-id: ${POSTMAN_TEAM_ID}")
+          fi
+
+          application_response="$(
+            curl --fail-with-body -sS \
+              -X POST \
+              -H "x-api-key: ${POSTMAN_API_KEY}" \
+              -H "x-postman-env: production" \
+              -H "Content-Type: application/json" \
+              -d "{\"system_env\":\"${SYSTEM_ENVIRONMENT_ID}\"}" \
+              "https://api.observability.postman.com/v2/agent/api-catalog/workspaces/${WORKSPACE_ID}/applications"
+          )"
+
+          provider_service_id="$(jq -r '.service_id // empty' <<<"${application_response}")"
+          application_id="$(jq -r '.application_id // empty' <<<"${application_response}")"
+
+          if [[ -z "${provider_service_id}" ]]; then
+            echo "Unable to resolve Insights provider service id for ${SERVICE_KEY}." >&2
+            echo "${application_response}" >&2
+            exit 1
+          fi
+
+          echo "Binding response: ${application_response}"
+
+          onboard_request="$(
+            jq -nc \
+              --arg sid "${provider_service_id}" \
+              --arg wid "${WORKSPACE_ID}" \
+              --arg sys "${SYSTEM_ENVIRONMENT_ID}" \
+              '{service:"akita", method:"POST", path:"/v2/api-catalog/services/onboard", body:{services:[{service_id:$sid, workspace_id:$wid, system_env:$sys}]}}'
+          )"
+
+          curl --fail-with-body -sS \
+            "https://bifrost-premium-https-v4.gw.postman.com/ws/proxy" \
+            "${headers[@]}" \
+            --data "${onboard_request}" \
+            | jq -c .
+
+          acknowledge_request="$(
+            jq -nc \
+              --arg wid "${WORKSPACE_ID}" \
+              '{service:"akita", method:"POST", path:("/v2/workspaces/" + $wid + "/onboarding/acknowledge"), body:{}}'
+          )"
+
+          curl --fail-with-body -sS \
+            "https://bifrost-premium-https-v4.gw.postman.com/ws/proxy" \
+            "${headers[@]}" \
+            --data "${acknowledge_request}" \
+            | jq -c .
+
+          echo "application-id=${application_id}" >> "${GITHUB_OUTPUT}"
+          echo "provider-service-id=${provider_service_id}" >> "${GITHUB_OUTPUT}"
+          echo "status=success" >> "${GITHUB_OUTPUT}"
 
       - name: Render Insights runtime bundle
         id: runtime_bundle
