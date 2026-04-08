@@ -1,0 +1,69 @@
+type: http
+name: List transfers
+url: '{{baseUrl}}/transfers?status=pending&limit=20'
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+queryParams:
+  - key: status
+    value: pending
+  - key: limit
+    value: '20'
+examples:
+  - response:
+      statusCode: 200
+      statusText: OK
+      body:
+        type: json
+        content: |-
+          {
+            "data": [
+              {
+                "id": "ff04785c-0195-3e54-fd0b-247580b5885d",
+                "fromAccountId": "string",
+                "toAccountId": "string",
+                "amount": 3895.0472555978545,
+                "currency": "string",
+                "status": "completed",
+                "reference": "string",
+                "createdAt": "1958-01-14T06:36:55.497Z",
+                "completedAt": "1996-09-24T07:21:36.759Z"
+              },
+              {
+                "id": "30480a1b-603a-7c2d-2677-1470f92f9abc",
+                "fromAccountId": "string",
+                "toAccountId": "string",
+                "amount": 9865.055521603266,
+                "currency": "string",
+                "status": "failed",
+                "reference": "string",
+                "createdAt": "1995-07-23T10:55:40.460Z",
+                "completedAt": "2018-04-23T08:20:46.832Z"
+              }
+            ],
+            "meta": {
+              "total": 4446,
+              "limit": 8499,
+              "offset": 3102
+            }
+          }
+      headers:
+        - key: Content-Type
+          value: application/json
+    name: OK
+  - response:
+      statusCode: 500
+      statusText: Internal Server Error
+      body:
+        type: json
+        content: |-
+          {
+            "error": "string",
+            "message": "string",
+            "statusCode": 8091
+          }
+      headers:
+        - key: Content-Type
+          value: application/json
+    name: Internal server error

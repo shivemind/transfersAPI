@@ -1,0 +1,11 @@
+$schema: https://schema.postman.com/json/draft-2020-12/collection/v3.0.0/
+type: collection
+name: '[Smoke] transfers-api'
+description: Core banking fund transfers service
+id: ac385884-3e37-41d1-ab26-e080a316bb78
+variables:
+  - key: baseUrl
+    value: https://stage-api.example.com/transfers
+items:
+  - ref: ./transfers/folder.yaml
+  - ref: ./00 - Resolve Secrets.request.yaml

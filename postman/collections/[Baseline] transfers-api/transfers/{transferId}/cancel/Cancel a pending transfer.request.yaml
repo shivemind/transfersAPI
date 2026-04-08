@@ -1,0 +1,62 @@
+type: http
+name: Cancel a pending transfer
+url: '{{baseUrl}}/transfers/:transferId/cancel'
+method: POST
+headers:
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: transferId
+    value: 87ab87e2-af32-c764-34a9-02280963355a
+examples:
+  - response:
+      statusCode: 200
+      statusText: OK
+      body:
+        type: json
+        content: |-
+          {
+            "id": "9647cb49-dde3-6a75-dfab-626750acbc81",
+            "fromAccountId": "string",
+            "toAccountId": "string",
+            "amount": 2153.3943998656046,
+            "currency": "string",
+            "status": "pending",
+            "reference": "string",
+            "createdAt": "1966-11-02T21:41:24.991Z",
+            "completedAt": "2019-10-08T13:17:41.944Z"
+          }
+      headers:
+        - key: Content-Type
+          value: application/json
+    name: Transfer cancelled
+  - response:
+      statusCode: 409
+      statusText: Conflict
+      body:
+        type: json
+        content: |-
+          {
+            "error": "string",
+            "message": "string",
+            "statusCode": 8091
+          }
+      headers:
+        - key: Content-Type
+          value: application/json
+    name: Transfer cannot be cancelled
+  - response:
+      statusCode: 500
+      statusText: Internal Server Error
+      body:
+        type: json
+        content: |-
+          {
+            "error": "string",
+            "message": "string",
+            "statusCode": 8091
+          }
+      headers:
+        - key: Content-Type
+          value: application/json
+    name: Internal server error

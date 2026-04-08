@@ -1,0 +1,71 @@
+type: http
+name: Initiate a fund transfer
+url: '{{baseUrl}}/transfers'
+method: POST
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "fromAccountId": "string",
+      "toAccountId": "string",
+      "amount": 2114.1999651370047,
+      "currency": "string",
+      "reference": "string"
+    }
+examples:
+  - response:
+      statusCode: 201
+      statusText: Created
+      body:
+        type: json
+        content: |-
+          {
+            "id": "9647cb49-dde3-6a75-dfab-626750acbc81",
+            "fromAccountId": "string",
+            "toAccountId": "string",
+            "amount": 2153.3943998656046,
+            "currency": "string",
+            "status": "pending",
+            "reference": "string",
+            "createdAt": "1966-11-02T21:41:24.991Z",
+            "completedAt": "2019-10-08T13:17:41.944Z"
+          }
+      headers:
+        - key: Content-Type
+          value: application/json
+    name: Created
+  - response:
+      statusCode: 400
+      statusText: Bad Request
+      body:
+        type: json
+        content: |-
+          {
+            "error": "string",
+            "message": "string",
+            "statusCode": 8091
+          }
+      headers:
+        - key: Content-Type
+          value: application/json
+    name: Validation error
+  - response:
+      statusCode: 500
+      statusText: Internal Server Error
+      body:
+        type: json
+        content: |-
+          {
+            "error": "string",
+            "message": "string",
+            "statusCode": 8091
+          }
+      headers:
+        - key: Content-Type
+          value: application/json
+    name: Internal server error

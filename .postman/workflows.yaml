@@ -1,0 +1,8 @@
+workflows:
+  syncSpecToCollection:
+    - spec: ../openapi/transfers-api.yaml
+      collection: ../postman/collections/[Baseline] transfers-api
+    - spec: ../openapi/transfers-api.yaml
+      collection: ../postman/collections/[Smoke] transfers-api
+    - spec: ../openapi/transfers-api.yaml
+      collection: ../postman/collections/[Contract] transfers-api

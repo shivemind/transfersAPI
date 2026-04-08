@@ -1,0 +1,6 @@
+type: folder
+name: transfers
+items:
+  - ref: ./{transferId}/folder.yaml
+  - ref: ./List transfers.request.yaml
+  - ref: ./Initiate a fund transfer.request.yaml

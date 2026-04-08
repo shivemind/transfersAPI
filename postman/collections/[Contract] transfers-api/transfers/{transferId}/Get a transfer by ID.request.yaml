@@ -1,0 +1,123 @@
+type: http
+name: Get a transfer by ID
+url: '{{baseUrl}}/transfers/:transferId'
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+pathVariables:
+  - key: transferId
+    value: 05a5def1-8946-16a3-adf9-1f13ed240646
+scripts:
+  - type: afterResponse
+    code:
+      - // [Contract] Auto-generated contract test assertions
+      - pm.test('Status code is successful (2xx)', function () {
+      - '    pm.response.to.be.success;'
+      - '});'
+      - pm.test('Response time is acceptable', function () {
+      - '    var threshold = parseInt(pm.environment.get(''RESPONSE_TIME_THRESHOLD'') || ''2000'', 10);'
+      - '    pm.expect(pm.response.responseTime).to.be.below(threshold);'
+      - '});'
+      - pm.test('Response body is not empty', function () {
+      - '    if (pm.response.code !== 204) {'
+      - '        var body = pm.response.text();'
+      - '        pm.expect(body.length).to.be.above(0);'
+      - '    }'
+      - '});'
+      - pm.test('Content-Type is application/json', function () {
+      - '    if (pm.response.code !== 204) {'
+      - '        pm.response.to.have.header(''Content-Type'');'
+      - '        pm.expect(pm.response.headers.get(''Content-Type'')).to.include(''application/json'');'
+      - '    }'
+      - '});'
+      - pm.test('Response is valid JSON', function () {
+      - '    if (pm.response.code !== 204) {'
+      - '        pm.response.to.be.json;'
+      - '    }'
+      - '});'
+      - // Validate required fields from response schema
+      - pm.test('Required fields are present', function () {
+      - '    if (pm.response.code === 204) return;'
+      - '    var jsonData = pm.response.json();'
+      - '    pm.expect(jsonData).to.be.an(''object'');'
+      - '    var keys = Object.keys(jsonData);'
+      - '    if (keys.length === 1 && Array.isArray(jsonData[keys[0]])) {'
+      - '        pm.expect(jsonData[keys[0]]).to.be.an(''array'');'
+      - '    }'
+      - '});'
+      - // Validate response field types (non-null required fields)
+      - pm.test('Field types are correct', function () {
+      - '    if (pm.response.code === 204) return;'
+      - '    var jsonData = pm.response.json();'
+      - '    Object.keys(jsonData).forEach(function(key) {'
+      - '        pm.expect(jsonData[key]).to.not.be.undefined;'
+      - '    });'
+      - '});'
+      - (function() {
+      - '    var status = pm.response.code;'
+      - '    if (status === 204) return; '
+      - '    try {'
+      - '        var body = pm.response.json();'
+      - '        pm.test(''Response body matches expected structure'', function () {'
+      - '            pm.expect(typeof body).to.equal(''object'');'
+      - '            if (status >= 400) {'
+      - '                pm.expect(body).to.have.property(''error'');'
+      - '                pm.expect(body).to.have.property(''message'');'
+      - '            }'
+      - '        });'
+      - '    } catch (e) {}'
+      - '})();'
+    language: text/javascript
+examples:
+  - response:
+      statusCode: 200
+      statusText: OK
+      body:
+        type: json
+        content: |-
+          {
+            "id": "bd4b9e32-d209-981b-f213-79c856bea6b6",
+            "fromAccountId": "string",
+            "toAccountId": "string",
+            "amount": 7875.202252847948,
+            "currency": "string",
+            "status": "failed",
+            "reference": "string",
+            "createdAt": "1989-01-31T22:12:27.055Z",
+            "completedAt": "1989-06-15T17:19:11.536Z"
+          }
+      headers:
+        - key: Content-Type
+          value: application/json
+    name: OK
+  - response:
+      statusCode: 404
+      statusText: Not Found
+      body:
+        type: json
+        content: |-
+          {
+            "error": "string",
+            "message": "string",
+            "statusCode": 7238
+          }
+      headers:
+        - key: Content-Type
+          value: application/json
+    name: Not found
+  - response:
+      statusCode: 500
+      statusText: Internal Server Error
+      body:
+        type: json
+        content: |-
+          {
+            "error": "string",
+            "message": "string",
+            "statusCode": 7238
+          }
+      headers:
+        - key: Content-Type
+          value: application/json
+    name: Internal server error

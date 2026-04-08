@@ -1,0 +1,10 @@
+$schema: https://schema.postman.com/json/draft-2020-12/collection/v3.0.0/
+type: collection
+name: '[Baseline] transfers-api'
+description: Core banking fund transfers service
+id: 5217eb70-3ed9-46af-a332-3f632257d357
+variables:
+  - key: baseUrl
+    value: https://stage-api.example.com/transfers
+items:
+  - ref: ./transfers/folder.yaml

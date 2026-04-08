@@ -1,0 +1,5 @@
+type: folder
+name: '{transferId}'
+items:
+  - ref: ./cancel/folder.yaml
+  - ref: ./Get a transfer by ID.request.yaml

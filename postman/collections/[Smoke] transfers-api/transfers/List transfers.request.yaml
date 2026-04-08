@@ -1,0 +1,87 @@
+type: http
+name: List transfers
+url: '{{baseUrl}}/transfers?status=completed&limit=20'
+method: GET
+headers:
+  - key: Accept
+    value: application/json
+queryParams:
+  - key: status
+    value: completed
+  - key: limit
+    value: '20'
+scripts:
+  - type: afterResponse
+    code:
+      - // [Smoke] Auto-generated test assertions
+      - pm.test('Status code is successful (2xx)', function () {
+      - '    pm.response.to.be.success;'
+      - '});'
+      - pm.test('Response time is acceptable', function () {
+      - '    var threshold = parseInt(pm.environment.get(''RESPONSE_TIME_THRESHOLD'') || ''2000'', 10);'
+      - '    pm.expect(pm.response.responseTime).to.be.below(threshold);'
+      - '});'
+      - pm.test('Response body is not empty', function () {
+      - '    if (pm.response.code !== 204) {'
+      - '        var body = pm.response.text();'
+      - '        pm.expect(body.length).to.be.above(0);'
+      - '    }'
+      - '});'
+    language: text/javascript
+examples:
+  - response:
+      statusCode: 200
+      statusText: OK
+      body:
+        type: json
+        content: |-
+          {
+            "data": [
+              {
+                "id": "0065fda4-5280-b6eb-a41b-4951d486bbf9",
+                "fromAccountId": "string",
+                "toAccountId": "string",
+                "amount": 8050.090796938909,
+                "currency": "string",
+                "status": "pending",
+                "reference": "string",
+                "createdAt": "1975-11-13T09:40:53.562Z",
+                "completedAt": "1997-03-05T09:36:51.779Z"
+              },
+              {
+                "id": "32b774d3-cb23-b5f7-9a32-9d9837534aba",
+                "fromAccountId": "string",
+                "toAccountId": "string",
+                "amount": 1346.978231026368,
+                "currency": "string",
+                "status": "failed",
+                "reference": "string",
+                "createdAt": "1999-06-18T19:20:13.717Z",
+                "completedAt": "2011-10-27T07:29:33.668Z"
+              }
+            ],
+            "meta": {
+              "total": 5475,
+              "limit": 3633,
+              "offset": 7489
+            }
+          }
+      headers:
+        - key: Content-Type
+          value: application/json
+    name: OK
+  - response:
+      statusCode: 500
+      statusText: Internal Server Error
+      body:
+        type: json
+        content: |-
+          {
+            "error": "string",
+            "message": "string",
+            "statusCode": 1400
+          }
+      headers:
+        - key: Content-Type
+          value: application/json
+    name: Internal server error

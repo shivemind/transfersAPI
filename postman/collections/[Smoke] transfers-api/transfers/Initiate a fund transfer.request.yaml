@@ -1,0 +1,89 @@
+type: http
+name: Initiate a fund transfer
+url: '{{baseUrl}}/transfers'
+method: POST
+headers:
+  - key: Content-Type
+    value: application/json
+  - key: Accept
+    value: application/json
+body:
+  type: json
+  content: |-
+    {
+      "fromAccountId": "string",
+      "toAccountId": "string",
+      "amount": 3823.4789450386097,
+      "currency": "string",
+      "reference": "string"
+    }
+scripts:
+  - type: afterResponse
+    code:
+      - // [Smoke] Auto-generated test assertions
+      - pm.test('Status code is successful (2xx)', function () {
+      - '    pm.response.to.be.success;'
+      - '});'
+      - pm.test('Response time is acceptable', function () {
+      - '    var threshold = parseInt(pm.environment.get(''RESPONSE_TIME_THRESHOLD'') || ''2000'', 10);'
+      - '    pm.expect(pm.response.responseTime).to.be.below(threshold);'
+      - '});'
+      - pm.test('Response body is not empty', function () {
+      - '    if (pm.response.code !== 204) {'
+      - '        var body = pm.response.text();'
+      - '        pm.expect(body.length).to.be.above(0);'
+      - '    }'
+      - '});'
+    language: text/javascript
+examples:
+  - response:
+      statusCode: 201
+      statusText: Created
+      body:
+        type: json
+        content: |-
+          {
+            "id": "932e32b3-c4d6-707d-ae42-3322752d4eea",
+            "fromAccountId": "string",
+            "toAccountId": "string",
+            "amount": 8574.65826124569,
+            "currency": "string",
+            "status": "completed",
+            "reference": "string",
+            "createdAt": "1985-10-16T07:34:10.802Z",
+            "completedAt": "1982-11-12T12:28:42.324Z"
+          }
+      headers:
+        - key: Content-Type
+          value: application/json
+    name: Created
+  - response:
+      statusCode: 400
+      statusText: Bad Request
+      body:
+        type: json
+        content: |-
+          {
+            "error": "string",
+            "message": "string",
+            "statusCode": 1400
+          }
+      headers:
+        - key: Content-Type
+          value: application/json
+    name: Validation error
+  - response:
+      statusCode: 500
+      statusText: Internal Server Error
+      body:
+        type: json
+        content: |-
+          {
+            "error": "string",
+            "message": "string",
+            "statusCode": 1400
+          }
+      headers:
+        - key: Content-Type
+          value: application/json
+    name: Internal server error
