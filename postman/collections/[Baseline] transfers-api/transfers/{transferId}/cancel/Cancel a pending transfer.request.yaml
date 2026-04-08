@@ -7,7 +7,7 @@ headers:
     value: application/json
 pathVariables:
   - key: transferId
-    value: 2d633394-4c45-3b9c-3b94-8eb422c6a588
+    value: 5318d20b-5213-4fb4-2873-bec79afa8e5d
 examples:
   - response:
       statusCode: 200
@@ -16,15 +16,15 @@ examples:
         type: json
         content: |-
           {
-            "id": "459a421f-faed-64a7-44b2-d18d506b013b",
+            "id": "d5716270-90a4-4c3b-13c2-426335e21c75",
             "fromAccountId": "string",
             "toAccountId": "string",
-            "amount": 3195.2464559886075,
+            "amount": 9843.198418791002,
             "currency": "string",
-            "status": "failed",
+            "status": "pending",
             "reference": "string",
-            "createdAt": "1994-04-06T12:32:36.439Z",
-            "completedAt": "1987-12-05T02:12:26.768Z"
+            "createdAt": "1966-08-18T04:30:29.655Z",
+            "completedAt": "1957-01-01T19:29:35.145Z"
           }
       headers:
         - key: Content-Type
@@ -39,7 +39,7 @@ examples:
           {
             "error": "string",
             "message": "string",
-            "statusCode": 8610
+            "statusCode": 7261
           }
       headers:
         - key: Content-Type
@@ -54,7 +54,7 @@ examples:
           {
             "error": "string",
             "message": "string",
-            "statusCode": 8610
+            "statusCode": 7261
           }
       headers:
         - key: Content-Type
