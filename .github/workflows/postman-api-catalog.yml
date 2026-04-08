@@ -183,6 +183,20 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           gh-fallback-token: ${{ secrets.GH_FALLBACK_TOKEN }}
 
+      - name: Ensure Bifrost system environment associations
+        if: ${{ toJSON(matrix.system_env_map) != '{}' }}
+        id: bifrost_env_sync
+        shell: bash
+        env:
+          POSTMAN_ACCESS_TOKEN: ${{ secrets.POSTMAN_ACCESS_TOKEN }}
+          POSTMAN_TEAM_ID: ${{ vars.POSTMAN_TEAM_ID }}
+          WORKSPACE_ID: ${{ steps.bootstrap.outputs.workspace-id }}
+          ENVIRONMENT_UIDS_JSON: ${{ steps.repo_sync.outputs.environment-uids-json != '' && steps.repo_sync.outputs.environment-uids-json || toJSON(matrix.environment_uids) }}
+          SYSTEM_ENV_MAP_JSON: ${{ toJSON(matrix.system_env_map) }}
+        run: |
+          set -euo pipefail
+          node scripts/ensure-bifrost-system-env-associations.mjs
+
       - name: Resolve CI reporting environment and target URL
         id: ci_env
         shell: bash
@@ -637,7 +651,7 @@ jobs:
             echo "- Smoke collection ID: \`${{ steps.bootstrap.outputs.smoke-collection-id }}\`"
             echo "- Contract collection ID: \`${{ steps.bootstrap.outputs.contract-collection-id }}\`"
             echo "- Workspace link status: \`${{ steps.repo_sync.outputs.workspace-link-status }}\`"
-            echo "- Environment sync status: \`${{ steps.repo_sync.outputs.environment-sync-status }}\`"
+            echo "- Environment sync status: \`${{ steps.bifrost_env_sync.outputs.status || steps.repo_sync.outputs.environment-sync-status }}\`"
             echo "- CI environment: \`${{ steps.ci_env.outputs.environment-name || 'n/a' }}\`"
             echo "- CI base URL: \`${{ steps.ci_env.outputs.base-url || 'n/a' }}\`"
             echo "- Smoke monitor ID: \`${{ steps.smoke_monitor.outputs.monitor-id || 'n/a' }}\`"
