@@ -7,6 +7,8 @@ headers:
     value: application/json
   - key: Accept
     value: application/json
+  - key: x-mock-response-name
+    value: Created
 body:
   type: json
   content: |-
