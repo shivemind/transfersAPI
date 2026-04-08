@@ -71,10 +71,15 @@ render_bundle "$ROOT_DIR" true
 render_bundle "$ACCOUNTS_REPO_DIR" false
 render_bundle "$LEDGER_REPO_DIR" false
 
+HAVE_POSTMAN_AGENT_SECRET="false"
+
 if [[ -n "${POSTMAN_API_KEY:-}" ]]; then
   kubectl get namespace "${POSTMAN_SECRET_NAMESPACE}" >/dev/null 2>&1 || kubectl create namespace "${POSTMAN_SECRET_NAMESPACE}"
   kubectl -n "${POSTMAN_SECRET_NAMESPACE}" delete secret postman-agent-secrets >/dev/null 2>&1 || true
   kubectl -n "${POSTMAN_SECRET_NAMESPACE}" create secret generic postman-agent-secrets --from-literal=postman-api-key="${POSTMAN_API_KEY}"
+  HAVE_POSTMAN_AGENT_SECRET="true"
+elif kubectl -n "${POSTMAN_SECRET_NAMESPACE}" get secret postman-agent-secrets >/dev/null 2>&1; then
+  HAVE_POSTMAN_AGENT_SECRET="true"
 fi
 
 for repo_dir in "${SERVICE_REPOS[@]}"; do
@@ -86,10 +91,10 @@ kubectl apply -f "$ACCOUNTS_REPO_DIR/k8s/rendered/accounts-api.service.yaml"
 kubectl apply -f "$LEDGER_REPO_DIR/k8s/rendered/ledger-api.service.yaml"
 kubectl apply -f "$ROOT_DIR/k8s/rendered/transfers-api.traffic.yaml"
 
-if [[ -n "${POSTMAN_API_KEY:-}" ]]; then
+if [[ "${HAVE_POSTMAN_AGENT_SECRET}" == "true" ]]; then
   kubectl apply -f "$ROOT_DIR/k8s/rendered/postman-insights-agent.yaml"
 else
-  echo "POSTMAN_API_KEY is not set, so the Insights agent manifest was rendered but not applied."
+  echo "No Postman agent secret is available, so the Insights agent manifest was rendered but not applied."
 fi
 
 kubectl rollout status deployment/transfers-api -n "${GRAPH_NAMESPACE}"
@@ -97,6 +102,6 @@ kubectl rollout status deployment/accounts-api -n "${GRAPH_NAMESPACE}"
 kubectl rollout status deployment/ledger-api -n "${GRAPH_NAMESPACE}"
 
 echo "Graph stack is deployed to cluster k3d-${K3D_CLUSTER_NAME} in namespace ${GRAPH_NAMESPACE}."
-echo "If POSTMAN_API_KEY was set, check the agent with:"
+echo "If the agent secret is available, check the agent with:"
 echo "  kubectl get pods -n ${POSTMAN_SECRET_NAMESPACE}"
 echo "  kubectl logs -n ${POSTMAN_SECRET_NAMESPACE} daemonset/postman-insights-agent --tail=20"

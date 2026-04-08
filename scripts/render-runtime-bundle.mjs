@@ -438,6 +438,8 @@ const systemEnvMap = args["system-env-map"]
   ? JSON.parse(args["system-env-map"])
   : service.system_env_map || {};
 const systemEnv = args["system-env"] || systemEnvMap.prod || systemEnvMap.stage || "";
+const insightsRoutingMode =
+  workspaceId && systemEnv ? "workspace" : insightsProjectId ? "legacy-project" : "discovery";
 const outputDirectory = path.resolve(repoRoot, args["output-dir"] || path.join("k8s", "rendered"));
 const includeAgent =
   String(args["include-agent"] || graph.insights_agent_owner || "false").toLowerCase() === "true";
@@ -453,10 +455,10 @@ const envEntries = [
   ...Object.entries(graph.env || {})
 ];
 
-if (insightsProjectId) {
-  envEntries.push(["POSTMAN_INSIGHTS_PROJECT_ID", insightsProjectId]);
-} else if (workspaceId) {
+if (insightsRoutingMode === "workspace") {
   envEntries.push(["POSTMAN_INSIGHTS_WORKSPACE_ID", workspaceId]);
+} else if (insightsProjectId) {
+  envEntries.push(["POSTMAN_INSIGHTS_PROJECT_ID", insightsProjectId]);
 }
 
 if (systemEnv) {
@@ -518,6 +520,7 @@ fs.writeFileSync(
       image,
       workspace_id: workspaceId,
       system_env: systemEnv,
+      insights_routing_mode: insightsRoutingMode,
       insights_project_id: insightsProjectId,
       insights_application_id: insightsApplicationId,
       isolate_graph_pods: isolateGraphPods,
