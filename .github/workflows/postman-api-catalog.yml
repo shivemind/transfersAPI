@@ -200,6 +200,8 @@ jobs:
           contract-collection-id: ${{ steps.bootstrap.outputs.contract-collection-id }}
           spec-path: ${{ matrix.spec_path }}
           environments-json: ${{ toJSON(matrix.environments) }}
+          environment-uids-json: ${{ toJSON(matrix.environment_uids) }}
+          system-env-map-json: ${{ toJSON(matrix.system_env_map) }}
           env-runtime-urls-json: ${{ toJSON(matrix.runtime_urls) }}
           generate-ci-workflow: false
           integration-backend: ${{ env.POSTMAN_INTEGRATION_BACKEND }}
@@ -208,19 +210,17 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           gh-fallback-token: ${{ secrets.GH_FALLBACK_TOKEN }}
 
-      - name: Optional Insights onboarding
-        id: insights
-        if: ${{ matrix.enable_insights }}
-        uses: postman-cs/postman-insights-onboarding-action@v0
-        with:
-          project-name: ${{ matrix.service_key }}
-          workspace-id: ${{ steps.bootstrap.outputs.workspace-id }}
-          environment-id: ${{ fromJSON(steps.repo_sync.outputs.environment-uids-json).prod }}
-          cluster-name: ${{ matrix.cluster_name }}
-          integration-backend: ${{ env.POSTMAN_INTEGRATION_BACKEND }}
-          postman-access-token: ${{ secrets.POSTMAN_ACCESS_TOKEN }}
-          postman-api-key: ${{ secrets.POSTMAN_API_KEY }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Render Insights runtime bundle
+        id: runtime_bundle
+        shell: bash
+        run: |
+          mkdir -p "${REPORTS_DIR}/runtime/${{ matrix.service_key }}"
+          node scripts/render-runtime-bundle.mjs \
+            --service "${{ matrix.service_key }}" \
+            --workspace-id "${{ steps.bootstrap.outputs.workspace-id }}" \
+            --system-env-map '${{ toJSON(matrix.system_env_map) }}' \
+            --cluster-name "${{ matrix.cluster_name }}" \
+            --output-dir "${REPORTS_DIR}/runtime/${{ matrix.service_key }}"
 
       - name: Upload Postman reports
         if: always()
@@ -243,5 +243,8 @@ jobs:
             echo "- Baseline collection ID: \`${{ steps.bootstrap.outputs.baseline-collection-id }}\`"
             echo "- Smoke collection ID: \`${{ steps.bootstrap.outputs.smoke-collection-id }}\`"
             echo "- Contract collection ID: \`${{ steps.bootstrap.outputs.contract-collection-id }}\`"
+            echo "- Workspace link status: \`${{ steps.repo_sync.outputs.workspace-link-status }}\`"
+            echo "- Environment sync status: \`${{ steps.repo_sync.outputs.environment-sync-status }}\`"
             echo "- Repo sync commit: \`${{ steps.repo_sync.outputs.commit-sha }}\`"
+            echo "- Runtime bundle: \`reports/runtime/${{ matrix.service_key }}\`"
           } >> "${GITHUB_STEP_SUMMARY}"

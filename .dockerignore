@@ -1,0 +1,13 @@
+.git
+.github
+.postman
+postman
+reports
+node_modules
+dist
+k8s/rendered
+INDEX.md
+JADEGLOBAL_ACCOUNT_BRIEF.md
+SINGULARITY_SCRAPER.md
+__pycache__
+singularity_scraper.py

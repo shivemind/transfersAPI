@@ -1,0 +1,5 @@
+node_modules/
+k8s/rendered/
+k8s/rendered-local/
+reports/
+

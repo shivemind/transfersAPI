@@ -8,23 +8,53 @@
       "requester_email": "owner@example.com",
       "version": "1.0.0",
       "spec_path": "openapi/transfers-api.yaml",
-      "spec_url": "https://raw.githubusercontent.com/danielshively-source/transfersAPI/main/openapi/transfers-api.yaml",
-      "workspace_id": "",
-      "spec_id": "",
-      "baseline_collection_id": "",
-      "smoke_collection_id": "",
-      "contract_collection_id": "",
+      "spec_url": "https://raw.githubusercontent.com/shivemind/transfersAPI/main/openapi/transfers-api.yaml",
+      "workspace_id": "268af398-14ad-4cb2-b5ab-5950ae7c3f07",
+      "spec_id": "1739bad4-e800-4c15-9823-13d61e8d8485",
+      "baseline_collection_id": "52400725-5217eb70-3ed9-46af-a332-3f632257d357",
+      "smoke_collection_id": "52400725-ac385884-3e37-41d1-ab26-e080a316bb78",
+      "contract_collection_id": "52400725-e7186998-206d-49da-9b17-f515d777fe40",
       "environments": [
         "prod",
         "stage"
       ],
+      "environment_uids": {
+        "prod": "52400725-e823131a-a838-4f9e-bba9-6a73e1757ce5",
+        "stage": "52400725-0a4a22e2-5de4-438d-98f1-1ae05f758469"
+      },
       "runtime_urls": {
         "prod": "https://api.example.com/transfers",
         "stage": "https://stage-api.example.com/transfers"
       },
       "smoke_base_url": "https://stage-api.example.com/transfers",
       "enable_insights": false,
-      "cluster_name": ""
+      "cluster_name": "postman-api-graph-k3d",
+      "system_env_map": {
+        "prod": "936898ce-cf73-4feb-827e-8a0e9d5e695e"
+      },
+      "graph": {
+        "namespace": "postman-api-graph",
+        "port": 8080,
+        "image": "transfers-api:dev",
+        "insights_agent_owner": true,
+        "env": {
+          "ACCOUNTS_API_URL": "http://accounts-api.postman-api-graph.svc.cluster.local:8081"
+        },
+        "traffic_generator": {
+          "enabled": true,
+          "schedule": "*/2 * * * *",
+          "requests_per_run": 20,
+          "method": "POST",
+          "path": "/transfers",
+          "body": {
+            "fromAccountId": "acct-checking-001",
+            "toAccountId": "acct-savings-002",
+            "amount": 125.75,
+            "currency": "USD",
+            "reference": "graph-seed-transfer"
+          }
+        }
+      }
     }
   ]
 }

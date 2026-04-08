@@ -1,0 +1,15 @@
+{
+  "name": "transfers-api",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Transfers API service with Postman API Catalog and Insights graph scaffolding.",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/server.js",
+    "check": "node --check src/http.js && node --check src/trace.js && node --check src/server.js && node --check scripts/render-runtime-bundle.mjs",
+    "render:k8s": "node scripts/render-runtime-bundle.mjs"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
